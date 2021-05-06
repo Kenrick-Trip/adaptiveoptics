@@ -68,8 +68,13 @@ if __name__ == "__main__":
             
             plt.figure()
             img=grabframes(5, SH_Sensor_Index)
-            plt.imshow(img[-1])
+            plt.imshow(img[-1], cmap='gray')
             
             #plt.figure()
             #img=grabframes(5, Camera_Index)
             #plt.imshow(img[-1])
+            
+            # untested code: saving image
+            #directionary = "\\tudelft.net\student-homes\T\ktrip\Desktop\SC42065\Assignment2figs" # define some folder 
+            #name = "actuator {}".format(i)  # create different image names
+            #plt.savefig("{}/{}.png".format(directionary,name))
