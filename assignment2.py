@@ -8,6 +8,7 @@ Setup right corner:
 
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
+from scipy import ndimage
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -49,13 +50,13 @@ if __name__ == "__main__":
         print(f"Deformable mirror with {len(dm)} actuators")
         
         # send signal to DM
-        n = len(dm)
+        n = 1# len(dm)
         
         for i in range(n):
             
             # send signal to DM
-            A = np.ones(n)
-            A[i] = -1
+            A = np.zeros(len(dm))
+            A[i] = 0
             
             # old setting: np.random.uniform(-1,1,size=len(dm))
             
@@ -66,13 +67,27 @@ if __name__ == "__main__":
             #plt.imshow(img[-1])
             # take SH image
             
-            plt.figure()
-            img=grabframes(5, SH_Sensor_Index)
-            plt.imshow(img[-1], cmap='gray')
-            
             #plt.figure()
-            #img=grabframes(5, Camera_Index)
-            #plt.imshow(img[-1])
+            #img=grabframes(5, SH_Sensor_Index)
+            #plt.imshow(img[-1], cmap='gray')
+            
+            plt.figure()
+            img=grabframes(5, Camera_Index)
+        
+            fig1 = ndimage.zoom(img[-1], 0.25)
+            
+            img1 = img[-1]
+            
+            t = 150
+            y = 30
+            pix = (t,y)
+            fig2=np.zeros(pix)
+            
+            for i in range(t):
+                for k in range(y):
+                    fig2[i,k] = img1[int((1040-t)/2)+i,int((1220-y)/2)+k]
+            
+            plt.imshow(fig2,aspect=1/7) #, cmap='gist_ncar')
             
             # untested code: saving image
             #directionary = "\\tudelft.net\student-homes\T\ktrip\Desktop\SC42065\Assignment2figs" # define some folder 
