@@ -49,7 +49,7 @@ def zoomImage(img, w, h):
     zoomImg = np.zeros((w,h))
     for i in range(w):
         for k in range(h):
-             zoomImg[i,k] = img[int((1040-w)/2)+i,int((1220-h)/2)+k]
+             zoomImg[i,k] = img[int((1280-w)/2)+i,int((1024-h)/2)+k]
     return zoomImg
 
 # total cost function:
@@ -69,48 +69,19 @@ def sharpness(f):
 def standardDev(image):
     [X,Y] = image.shape
 
-    mu_x = 0
-    mu_y = 0
-    sigma_x = 0
-    sigma_y = 0
+    X_vec = np.arange(0,X)-X/2
+    Y_vec = np.arange(0,Y)-Y/2
 
-    if X == Y:
-        for i in range(X):
-            mu_x += (i-X/2)*np.sum(image[i,:])
-            mu_y += (i-Y/2)*np.sum(image[:,i])
+    mu_x = X_vec*np.sum(image,axis = 1)
+    mu_x = np.sum(mu_x)/np.sum(image)
+    mu_y = Y_vec*np.sum(image,axis = 0)
+    mu_y = np.sum(mu_y)/np.sum(image)
 
-        mu_x = mu_x/(np.sum(image))
-        mu_y = mu_y/(np.sum(image))
-        
-        for i in range(i):
-            sigma_x += (i - X/2 - mu_x)**2*np.sum(image[i,:]**2)
-            sigma_y += (i - Y/2 - mu_y)**2*np.sum(image[:,i]**2)
-    
-        sigma_x = np.sqrt(sigma_x/np.sum(image**2))
-        sigma_y = np.sqrt(sigma_y/np.sum(image**2))  
+    sigma_x = (X_vec - mu_x)**2*np.sum(image**2, axis = 1)
+    sigma_x = np.sqrt(np.sum(sigma_x)/np.sum(image**2))
+    sigma_y = (Y_vec - mu_x)**2*np.sum(image**2, axis = 0)
+    sigma_y = np.sqrt(np.sum(sigma_y)/np.sum(image**2))
 
-    else:
-        #separate standard dev for x   
-        for i in range(X):
-            mu_x += (i-X/2)*np.sum(image[i,:])
-            
-        mu_x = mu_x/(np.sum(image))
-
-        for i in range(i):
-            sigma_x += (i - X/2 - mu_x)**2*np.sum(image[i,:]**2)
-
-        sigma_x = np.sqrt(sigma_x/np.sum(image**2))
-
-        #separate standard dev for x
-        for j in range(Y):
-            mu_y += (j-Y/2)*np.sum(image[:,j])
-
-        mu_y = mu_y/(np.sum(image))  
-
-        for j in range(Y):
-            sigma_y += (j - Y/2 - mu_y)**2*np.sum(image[:,j]**2)
-
-        sigma_y = np.sqrt(sigma_y/np.sum(image**2))
     return sigma_x+sigma_y
 
 def secondMoment(image):
