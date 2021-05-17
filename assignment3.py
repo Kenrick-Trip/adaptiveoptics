@@ -36,12 +36,12 @@ Camera_Index = 1
 #        while acquired<nframes:
 #            frame = cam.grab_frame()
 #            if frame is not None:
- #               imgs[acquired]=frame
- #               acquired+=1
- #           
- #   
- #       cam.stop_video()
- #   return imgs
+#               imgs[acquired]=frame
+#               acquired+=1
+#           
+#   
+#       cam.stop_video()
+#   return imgs
 
 # zoom in on PSF:
     
@@ -61,10 +61,87 @@ def costFunc(m1, m2, m3, m4):
     f4 = 1
     return f1*m1 + f2*m2 + f3*m3 + f4*m4
 
-# all image metric functions:
+# all image metric functions: 
     
 def sharpness(f):
     return np.sum(f)
+
+def standardDev(image):
+    [X,Y] = image.shape
+
+    mu_x = 0
+    mu_y = 0
+    sigma_x = 0
+    sigma_y = 0
+
+    if X == Y:
+        for i in range(X):
+            mu_x += (i-X/2)*np.sum(image[i,:])
+            mu_y += (i-Y/2)*np.sum(image[:,i])
+
+        mu_x = mu_x/(np.sum(image))
+        mu_y = mu_y/(np.sum(image))
+        
+        for i in range(i):
+            sigma_x += (i - X/2 - mu_x)**2*np.sum(image[i,:]**2)
+            sigma_y += (i - Y/2 - mu_y)**2*np.sum(image[:,i]**2)
+    
+        sigma_x = np.sqrt(sigma_x/np.sum(image**2))
+        sigma_y = np.sqrt(sigma_y/np.sum(image**2))  
+
+    else:
+        #separate standard dev for x   
+        for i in range(X):
+            mu_x += (i-X/2)*np.sum(image[i,:])
+            
+        mu_x = mu_x/(np.sum(image))
+
+        for i in range(i):
+            sigma_x += (i - X/2 - mu_x)**2*np.sum(image[i,:]**2)
+
+        sigma_x = np.sqrt(sigma_x/np.sum(image**2))
+
+        #separate standard dev for x
+        for j in range(Y):
+            mu_y += (j-Y/2)*np.sum(image[:,j])
+
+        mu_y = mu_y/(np.sum(image))  
+
+        for j in range(Y):
+            sigma_y += (j - Y/2 - mu_y)**2*np.sum(image[:,j]**2)
+
+        sigma_y = np.sqrt(sigma_y/np.sum(image**2))
+    return sigma_x+sigma_y
+
+def secondMoment(image):
+    [X,Y] = image.shape
+    
+    mx = my = 0
+    if X == Y:
+        for i in range(X):
+            mx += (i-X/2)**2*np.sum(image[i,:])
+            my += (i-Y/2)**2*np.sum(image[:,i])
+    else:
+        for i in range(X):
+            mx += (i-X/2)**2*np.sum(image[i,:])
+        for i in range(Y): 
+            my += (i-Y/2)**2*np.sum(image[:,i])
+    return  mx+my
+
+def edgeSharpness(f):
+    [X,Y] = f.shape
+    S1 = 0
+    S2 = 0
+    
+    for i in range(X-1):
+        for j in range(Y-1):
+            S1 = S1 + (f[i+1,j]-f[i,j])**2 + (f[i,j+1]-f[i,j])**2
+            S2 = S2 + f[i,j]
+    
+    return S1/S2
+
+# TODO: insert metrics 
+# TODO: plots - Actuators (Array plot) + Images (before, after) - in function format
 
 # main loop:
     
@@ -91,11 +168,12 @@ if __name__ == "__main__":
             img = np.random.rand(1280,1024)
             
             f[i][:][:] = zoomImage(img,w,h) # img[-1]
-        
-            m1 = sharpness(f)
-            m2 = 0 # metric 2
-            m3 = 0 # metric 3
-            m4 = 0 # metric 4
+            
+            # metrics -> Iij is PSF(i,j), here doneted as f[i][j]
+            m1 = sharpness(f[i][:][:]) # metric 1 - sharpness
+            m2 = standardDev(f[i][:][:]) # metric 2 - standard deviation
+            m3 = secondMoment(f[i][:][:]) # metric 3 - second moment
+            m4 = edgeSharpness(f[i][:][:]) # metric 4 - edge sharpness
             
             val[i] = costFunc(m1, m2, m3, m4)
         
