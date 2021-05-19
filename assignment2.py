@@ -92,7 +92,7 @@ if __name__ == "__main__":
             #plt.imshow(img[-1], cmap='gray')
             
             plt.figure()
-            img=grabframes(5, Camera_Index)
+            img=grabframes(2, Camera_Index)
         
             fig1 = ndimage.zoom(img[-1], 0.25)
             
