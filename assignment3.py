@@ -7,58 +7,61 @@ Created on Thu May  6 16:23:07 2021
 
 # assignment 3
 
-#from cameras.ueye_camera import uEyeCamera
-#from pyueye import ueye
-#from scipy import ndimage
+from cameras.ueye_camera import uEyeCamera
+from pyueye import ueye
+from scipy import ndimage
 
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 SH_Sensor_Index = 2
 Camera_Index = 1
+progress = 0
 
-#def grabframes(nframes, cameraIndex=0):
-#    with uEyeCamera(device_id=cameraIndex) as cam:
-#        cam.set_colormode(ueye.IS_CM_MONO8)#IS_CM_MONO8)
-#        w=1280
-#        h=1024
-#        cam.set_aoi(0,0, w, h)
-#        
-#        cam.alloc(buffer_count=10)
-#        cam.set_exposure(0.5)
-#        cam.capture_video(True)
-#    
-#        imgs = np.zeros((nframes,h,w),dtype=np.uint8)
-#        acquired=0
-#        # For some reason, the IDS cameras seem to be overexposed on the 
-#        # first frames (ignoring exposure time?). 
-#        # So best to discard some frames and then use the last one
-#        while acquired<nframes:
-#            frame = cam.grab_frame()
-#            if frame is not None:
-#               imgs[acquired]=frame
-#               acquired+=1
-#           
-#   
-#       cam.stop_video()
-#   return imgs
+def grabframes(nframes, cameraIndex=0):
+    with uEyeCamera(device_id=cameraIndex) as cam:
+        cam.set_colormode(ueye.IS_CM_MONO8)#IS_CM_MONO8)
+        w=1280
+        h=1024
+        cam.set_aoi(0,0, w, h)
+        
+        cam.alloc(buffer_count=10)
+        cam.set_exposure(0.5)
+        cam.capture_video(True)
+    
+        imgs = np.zeros((nframes,h,w),dtype=np.uint8)
+        acquired=0
+        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
+        # So best to discard some frames and then use the last one
+        while acquired<nframes:
+            frame = cam.grab_frame()
+            if frame is not None:
+                imgs[acquired]=frame
+                acquired+=1
+            
+    
+        cam.stop_video()
+    
+    return imgs
 
 # zoom in on PSF:
     
 def zoomImage(img, w, h):
+    wo = -285
+    ho = 128
     zoomImg = np.zeros((w,h))
     for i in range(w):
         for k in range(h):
-             zoomImg[i,k] = img[int((1280-w)/2)+i,int((1024-h)/2)+k]
+             zoomImg[i,k] = img[int((1280+wo*2-w)/2)+i,int((1024+ho*2-h)/2)+k]
     return zoomImg
 
 # total cost function:
     
 def costFunc(m1, m2, m3, m4):
-    f1 = 1
+    f1 = 0
     f2 = 1
-    f3 = 1
-    f4 = 1
+    f3 = 0
+    f4 = 0
     return f1*m1 + f2*m2 + f3*m3 + f4*m4
 
 # all image metric functions: 
@@ -117,28 +120,45 @@ def edgeSharpness(f):
 # main loop:
     
 if __name__ == "__main__":
-    #from dm.okotech.dm import OkoDM
-    #with OkoDM(dmtype=1) as dm:   
+    from dm.okotech.dm import OkoDM
+    with OkoDM(dmtype=1) as dm:   
         # define constants
-        n = 100 # iterations per method
-        w = 150
-        h = 30
+        n = 3000 # iterations per method
+        w = 100
+        h = 100
+        progress = 0
         
         val = np.zeros(n) # store total cost value
         act = np.zeros((n,19)) # len(dm))) # store actuator values
         offset = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] # find static abberation using trail and error
         
         for i in range(n):
-            f = np.zeros((n,w,h))
-            act[i][:] = np.random.uniform(-1,1,size=19) + offset # len(dm)
+            f = np.zeros((n,h,w))
+            #act[i][:] = np.random.uniform(-1,1,size=19) + offset # len(dm)
+            x = (np.random.randint(5, size=5)-2*np.ones(5))/2
+            #x = (np.random.randint(7, size=5)-3*np.ones(5))/3 tip/tilt
+            A = np.zeros(len(dm))
+            A[17] = 1
+            A[18] = -0.667
+            
+            for k in range(5):
+                A[k] = x[k]
+            
+            act[i][:] = A
+            print(A)
+            
+            #global progress
+            progress = progress + 1
+            percentage = round((progress/n)*100,2)
+            print('progress = {}%'.format(percentage))
             
             # send signal to DM
-            #dm.setActuators(act[i][:])
-            #img=grabframes(5, Camera_Index)
+            dm.setActuators(act[i][:])
+            img=grabframes(5, Camera_Index)
 
-            img = np.random.rand(1280,1024)
+            #img = np.random.rand(1280,1024)
             
-            f[i][:][:] = zoomImage(img,w,h) # img[-1]
+            f[i][:][:] = zoomImage(img[-1],h,w) # img[-1]
             
             # metrics -> Iij is PSF(i,j), here doneted as f[i][j]
             m1 = sharpness(f[i][:][:]) # metric 1 - sharpness

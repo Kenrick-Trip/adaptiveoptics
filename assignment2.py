@@ -16,6 +16,15 @@ import matplotlib.pyplot as plt
 SH_Sensor_Index = 2
 Camera_Index = 1
 
+def zoomImage(img, w, h):
+    wo = -285 #270
+    ho = 128 #138
+    zoomImg = np.zeros((w,h))
+    for i in range(w):
+        for k in range(h):
+             zoomImg[i,k] = img[int((1280+wo*2-w)/2)+i,int((1024+ho*2-h)/2)+k]
+    return zoomImg
+
 def grabframes(nframes, cameraIndex=0):
     with uEyeCamera(device_id=cameraIndex) as cam:
         cam.set_colormode(ueye.IS_CM_MONO8)#IS_CM_MONO8)
@@ -56,7 +65,18 @@ if __name__ == "__main__":
             
             # send signal to DM
             A = np.zeros(len(dm))
-            A[i] = 0
+            
+            # inner circle
+            A[0] = 0
+            A[1] = 1
+            A[2] = -0.5
+            A[3] = 0
+            A[4] = 1
+            
+            # tip/tilt
+            A[17] = 1
+            A[18] = -0.667
+            
             
             # old setting: np.random.uniform(-1,1,size=len(dm))
             
@@ -78,16 +98,14 @@ if __name__ == "__main__":
             
             img1 = img[-1]
             
-            t = 150
-            y = 30
-            pix = (t,y)
-            fig2=np.zeros(pix)
+            w = 100 #150
+            h = 100 #30
             
-            for i in range(t):
-                for k in range(y):
-                    fig2[i,k] = img1[int((1040-t)/2)+i,int((1220-y)/2)+k]
+            fig2=zoomImage(img[-1], w, h)
             
-            plt.imshow(fig2,aspect=1/7) #, cmap='gist_ncar')
+          
+            
+            plt.imshow(fig2) #,aspect=1/7) #, cmap='gist_ncar')
             
             # untested code: saving image
             #directionary = "\\tudelft.net\student-homes\T\ktrip\Desktop\SC42065\Assignment2figs" # define some folder 
