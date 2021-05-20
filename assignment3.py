@@ -47,8 +47,8 @@ def grabframes(nframes, cameraIndex=0):
 # zoom in on PSF:
     
 def zoomImage(img, w, h):
-    wo = -285
-    ho = 128
+    wo = -296 #270
+    ho = 83 #138
     zoomImg = np.zeros((w,h))
     for i in range(w):
         for k in range(h):
@@ -123,9 +123,9 @@ if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm:   
         # define constants
-        n = 3000 # iterations per method
-        w = 100
-        h = 100
+        n = 4000 # iterations per method
+        w = 20
+        h = 20
         progress = 0
         
         val = np.zeros(n) # store total cost value
@@ -135,14 +135,21 @@ if __name__ == "__main__":
         for i in range(n):
             f = np.zeros((n,h,w))
             #act[i][:] = np.random.uniform(-1,1,size=19) + offset # len(dm)
-            x = (np.random.randint(5, size=5)-2*np.ones(5))/2
+            #x = (np.random.randint(5, size=5)-2*np.ones(5))/2
             #x = (np.random.randint(7, size=5)-3*np.ones(5))/3 tip/tilt
+            x = (np.random.randint(2, size=12))/2
             A = np.zeros(len(dm))
+            
+            A[0] = 0
+            A[1] = 1
+            A[2] = -0.5
+            A[3] = 0
+            A[4] = 1
             A[17] = 1
             A[18] = -0.667
             
-            for k in range(5):
-                A[k] = x[k]
+            for k in range(12):
+                A[k+5] = x[k]
             
             act[i][:] = A
             print(A)

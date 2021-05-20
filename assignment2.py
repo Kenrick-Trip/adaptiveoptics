@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 
 SH_Sensor_Index = 2
 Camera_Index = 1
-
+  
 def zoomImage(img, w, h):
-    wo = -285 #270
-    ho = 128 #138
+    wo = -294 #270
+    ho = 84 #138
     zoomImg = np.zeros((w,h))
     for i in range(w):
         for k in range(h):
@@ -71,7 +71,16 @@ if __name__ == "__main__":
             A[1] = 1
             A[2] = -0.5
             A[3] = 0
-            A[4] = 1
+            A[4] = 1           
+            
+            # outer circle
+            A[5] = 0.5
+            A[6] = 0.5
+            A[7] = 0.5
+            A[9] = 0.5
+            A[10] = 0.5
+            
+            
             
             # tip/tilt
             A[17] = 1
@@ -98,14 +107,15 @@ if __name__ == "__main__":
             
             img1 = img[-1]
             
-            w = 100 #150
-            h = 100 #30
+            w = 20 #150
+            h = 20 #30
             
             fig2=zoomImage(img[-1], w, h)
             
           
             
             plt.imshow(fig2) #,aspect=1/7) #, cmap='gist_ncar')
+            plt.colorbar()
             
             # untested code: saving image
             #directionary = "\\tudelft.net\student-homes\T\ktrip\Desktop\SC42065\Assignment2figs" # define some folder 
