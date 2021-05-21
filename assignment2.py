@@ -17,12 +17,11 @@ SH_Sensor_Index = 2
 Camera_Index = 1
   
 def zoomImage(img, w, h):
-    wo = -294 #270
-    ho = 84 #138
+    [wo, ho] = np.unravel_index(img.argmax(), img.shape)
     zoomImg = np.zeros((w,h))
     for i in range(w):
         for k in range(h):
-             zoomImg[i,k] = img[int((1280+wo*2-w)/2)+i,int((1024+ho*2-h)/2)+k]
+             zoomImg[i,k] = img[int(wo-w/2)+i,int(ho-h/2)+k]
     return zoomImg
 
 def grabframes(nframes, cameraIndex=0):
@@ -86,10 +85,16 @@ if __name__ == "__main__":
             A[17] = 1
             A[18] = -0.667
             
+            # nelder mead B=standardDev, C=secondmoment
+            B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
+            C = [-0.73711375, -0.86226782,  0.44749225, -0.18944923,  0.15651304, -0.86378585,
+                 0.50516737,  0.74433535,  0.12245099,  0.20117577, -0.22835749,  0.40728353,
+                 0.34554966, -0.00241688, -0.34318344,  0.28183828,  0.6185486,  -0.67263108,
+                 0.62322176]
             
             # old setting: np.random.uniform(-1,1,size=len(dm))
             
-            dm.setActuators(A)
+            dm.setActuators(B)
             
             #plt.figure()    
             #img=grabframes(5, Camera_Index)
@@ -101,14 +106,14 @@ if __name__ == "__main__":
             #plt.imshow(img[-1], cmap='gray')
             
             plt.figure()
-            img=grabframes(2, Camera_Index)
+            img=grabframes(3, Camera_Index)
         
             fig1 = ndimage.zoom(img[-1], 0.25)
             
             img1 = img[-1]
             
-            w = 20 #150
-            h = 20 #30
+            w = 30 #150
+            h = 30 #30
             
             fig2=zoomImage(img[-1], w, h)
             
