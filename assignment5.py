@@ -48,34 +48,47 @@ def create_ref_grid(ShackHartmann):
      #ShackHartmann= []
      
      SH_round = np.around(ShackHartmann, decimals = 3)
-    
-     threshold = np.mean(im2)*3 #determine threshold in less arbitrary way
+     threshold = np.mean(SH_round)*3 #determine threshold in less arbitrary way
      #Find the local coordinates on the total matrix 
      coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
 
-    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[]))
+    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+    grid_ref[coordinates[:,0],coordinates[:,1]] = 1
 
-     return coordinates, grid_ref 
+     return coordinates, grid_coor 
 
-def get_slopes(reference, coordinates, radius):
-    
-    
-    
+def get_slopes(reference,grid_coor, coordinates, radius):
+      
     ref_size = reference.shape[0]
     crd_size = coordinates.shape[0]
-    
-    
-    
+
     if ref_size != crd_size:
         raise Warning('number of reference points differs from number of coordinates')
-        
+    
+
+    difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
     for i in range(ref_size):
         
-        centroid = reference[i,:]
+        centroid = reference[i,:] 
         
-        x_near = find_nearest(coordinates)
-        
-    
+        for xr in range(-radius,radius):
+            for yr in range(-radius,radius):
+                x0 = centroid[0] + xr
+                y0 = centroid[1] + yr
+                
+                if grid_coor[x0,y0] == 1:
+                    difference[i,0] = x0
+                    difference[i,1] = y0
+                    difference[i,2] = centroid[0]
+                    difference[i,3] = centroid[1]
+                    difference[i,4] = x0 - centroid[0]
+                    difference[i,5] = y0 - centroid[1]
+                    break
+            if grid_coor[x0,y0] == 1:
+                break
+            
+            
+    return difference
 
 def find_nearest(array, value):
     array = np.asarray(array)
