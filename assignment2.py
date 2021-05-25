@@ -101,26 +101,36 @@ if __name__ == "__main__":
             #plt.imshow(img[-1])
             # take SH image
             
-            #plt.figure()
-            #img=grabframes(5, SH_Sensor_Index)
-            #plt.imshow(img[-1], cmap='gray')
-            
             plt.figure()
-            img=grabframes(3, Camera_Index)
+            img=grabframes(5, SH_Sensor_Index)
+            #plt.imshow(img[-1], cmap='hsv')
+            
+            #plt.figure()
+            #img=grabframes(3, Camera_Index)
         
-            fig1 = ndimage.zoom(img[-1], 0.25)
+            #fig1 = ndimage.zoom(img[-1], 0.25)
             
-            img1 = img[-1]
+            #img1 = img[-1]
             
-            w = 30 #150
-            h = 30 #30
+            #w = 30 #150
+            #h = 30 #30
             
-            fig2=zoomImage(img[-1], w, h)
+            #fig2=zoomImage(img[-1], w, h)
             
-          
+            SHarray = img[-1]
+            SHmax = np.max(SHarray)
             
-            plt.imshow(fig2) #,aspect=1/7) #, cmap='gist_ncar')
-            plt.colorbar()
+            SHpoints = np.zeros((1024,1280))
+            
+            for i in range(1280):
+                for k in range(1024):
+                    if SHarray[k,i] > 1.2:
+                        SHpoints[k,i] = 1
+            
+            plt.scatter(SHpoints)
+            #plt.imshow(SHpoints, cmap='gray')
+            #plt.imshow(img[-1]) #,aspect=1/7) #, cmap='gist_ncar')
+            #plt.colorbar()
             
             # untested code: saving image
             #directionary = "\\tudelft.net\student-homes\T\ktrip\Desktop\SC42065\Assignment2figs" # define some folder 
