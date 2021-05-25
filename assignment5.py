@@ -53,20 +53,34 @@ def create_ref_grid(ShackHartmann):
      #Find the local coordinates on the total matrix 
      coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
 
-     return coordinates
+    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[]))
+
+     return coordinates, grid_ref 
 
 def get_slopes(reference, coordinates, radius):
+    
+    
     
     ref_size = reference.shape[0]
     crd_size = coordinates.shape[0]
     
+    
+    
     if ref_size != crd_size:
         raise Warning('number of reference points differs from number of coordinates')
         
-    
+    for i in range(ref_size):
+        
+        centroid = reference[i,:]
+        
+        x_near = find_nearest(coordinates)
+        
     
 
-    
+def find_nearest(array, value):
+    array = np.asarray(array)
+    index = (np.abs(array - value)).argmin()
+    return index    
 
 
     
@@ -81,7 +95,7 @@ plt.imshow(im)
 
 # image_max is the dilation of im with a 20*20 structuring element
 # It is used within peak_local_max function
-image_max = ndi.maximum_filter(im, size=10, mode='constant')
+image_max = ndi.maximum_filter(im, size=9, mode='constant')
 
 im2 = np.around(im, decimals = 3)
 mid = np.mean(im2)*1.5
