@@ -4,6 +4,10 @@ Created on Thu May 20 15:54:31 2021
 
 @author: loekv
 """
+
+# !pip install -U scikit-learn
+
+from sklearn.cluster import KMeans
 import numpy as np
 import scipy as scp
 from scipy import ndimage as ndi
@@ -12,7 +16,6 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
-from sklearn.cluster import KMeans
 
 #import os as os
 #path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\Adaptive optics\\Scriptjes' #use double \ between two directories
