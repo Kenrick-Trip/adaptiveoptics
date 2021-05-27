@@ -14,9 +14,7 @@ from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
 from sklearn.cluster import KMeans
 
-#import os as os
-#path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\Adaptive optics\\Scriptjes' #use double \ between two directories
-#os.chdir(path)
+
 
 
 #%%
@@ -55,10 +53,12 @@ def create_ref_grid(ShackHartmann):
      #Find the local coordinates on the total matrix 
      coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
 
-     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
-     grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+     #grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+     #grid_ref[coordinates[:,0],coordinates[:,1]] = 1
 
-     return coordinates, grid_ref 
+    centers = Clusters(coordinates)
+    
+     return centers
 
 def get_slopes(reference,grid_coor, coordinates, radius):
       
@@ -93,14 +93,40 @@ def get_slopes(reference,grid_coor, coordinates, radius):
             
     return difference
 
-def find_nearest(array, value):
-    array = np.asarray(array)
-    index = (np.abs(array - value)).argmin()
-    return index    
-
-
+def Clusters(coordinates):
+    kmeans = KMeans(n_clusters=150)
+    kmeans.fit(coordinates)
+    centers = kmeans.cluster_centers_
+        
     
-
+def distance(pos, threshold):
+    """
+    Calculates relative positions and distances between particles.
+    """
+    print(pos.shape)
+    num_spots = pos.shape[0]
+    numDim = pos.shape[1]
+    
+    rel_pos = np.zeros((num_spots,num_spots,numDim))                                    
+    rel_dist = np.zeros((num_spots,num_spots))                                           
+    
+    #calculate relative positions and distances
+    rel_pos = np.subtract(pos,pos[:,None])
+       
+    rel_dist += np.sum(rel_pos**2, axis = 2)
+    rel_dist = np.sqrt(rel_dist)
+    
+    indices = np.diag_indices(num_spots)                                    
+    rel_dist[indices] = np.inf
+    
+    indices = np.where(rel_dist < threshold)
+    
+    indices = np.sort(indices,axis = 0)
+    indices = np.unique(indices, axis = 0)
+    
+    pos = np.delete(pos, indices[0,:],axis = 0)
+    print(pos.shape)
+    return pos
     
 #%% Test code to test reference grid
 
@@ -159,7 +185,8 @@ if __name__ == "__main__":
         
         plt.show()
         
-        #%%
-    
-        im2 = np.around(im, decimals = 3)
-        mid = np.mean(im2)
+
+        
+        
+        
+        
