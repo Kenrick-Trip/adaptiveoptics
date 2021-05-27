@@ -12,6 +12,7 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
+from sklearn.cluster import KMeans
 
 #import os as os
 #path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\Adaptive optics\\Scriptjes' #use double \ between two directories
@@ -131,7 +132,9 @@ if __name__ == "__main__":
         coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
         #coordinates = coordinates[coordinates < 150]
         
-        
+        kmeans = KMeans(n_clusters=150)
+        kmeans.fit(coordinates)
+        centers = kmeans.cluster_centers_
         
         
         
