@@ -4,10 +4,6 @@ Created on Thu May 20 15:54:31 2021
 
 @author: loekv
 """
-
-# !pip install -U scikit-learn
-
-from sklearn.cluster import KMeans
 import numpy as np
 import scipy as scp
 from scipy import ndimage as ndi
@@ -16,10 +12,9 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
+from sklearn.cluster import KMeans
+import time as time
 
-#import os as os
-#path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\Adaptive optics\\Scriptjes' #use double \ between two directories
-#os.chdir(path)
 
 
 #%%
@@ -51,17 +46,19 @@ def grabframes(nframes, cameraIndex=0):
 
 def create_ref_grid(ShackHartmann):
     # TODO: Load Shack hartmann image
-     #ShackHartmann= []
-     
-     SH_round = np.around(ShackHartmann, decimals = 3)
-     threshold = np.mean(SH_round)*3 #determine threshold in less arbitrary way
-     #Find the local coordinates on the total matrix 
-     coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
-
-     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
-     grid_ref[coordinates[:,0],coordinates[:,1]] = 1
-
-     return coordinates, grid_ref 
+    # ShackHartmann= []
+    
+    SH_round = np.around(ShackHartmann, decimals = 3)
+    threshold = np.mean(SH_round)*3 #determine threshold in less arbitrary way
+    #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
+    
+    #grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+    #grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+    
+    centers = distance(coordinates)
+    
+    return centers
 
 def get_slopes(reference,grid_coor, coordinates, radius):
       
@@ -95,15 +92,41 @@ def get_slopes(reference,grid_coor, coordinates, radius):
             
             
     return difference
-
-def find_nearest(array, value):
-    array = np.asarray(array)
-    index = (np.abs(array - value)).argmin()
-    return index    
-
-
+        
     
-
+def distance(pos, threshold):
+    
+    """
+    Calculates relative positions and distances between particles.
+    """
+    
+    # print(pos.shape)
+    
+    num_spots = pos.shape[0]
+    numDim = pos.shape[1]
+    
+    rel_pos = np.zeros((num_spots,num_spots,numDim))                                    
+    rel_dist = np.zeros((num_spots,num_spots))                                           
+    
+    #calculate relative positions and distances
+    rel_pos = np.subtract(pos,pos[:,None])
+       
+    rel_dist += np.sum(rel_pos**2, axis = 2)
+    rel_dist = np.sqrt(rel_dist)
+    
+    indices = np.diag_indices(num_spots)                                    
+    rel_dist[indices] = np.inf
+    
+    indices = np.where(rel_dist < threshold)
+    
+    indices = np.sort(indices,axis = 0)
+    indices = np.unique(indices, axis = 0)
+    
+    pos = np.delete(pos, indices[0,:],axis = 0)
+    
+    # print(pos.shape)
+    
+    return pos
     
 #%% Test code to test reference grid
 
@@ -113,17 +136,16 @@ if __name__ == "__main__":
             
         #im = plt.imread('plot1.PNG')
         #im= im[10:220,50:300,0]
-        #plt.imshow(im)
+        
         
         # test with real image:
         A =  np.random.uniform(-1,1,size=len(dm))
         B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
         dm.setActuators(B)    
-        im = grabframes(5, 2)[-1] 
-        im = im[70:780,300:950]
-            
-        #im = img_as_float(im)
-        
+        im = grabframes(3, 2)[-1] 
+
+    
+         
         # image_max is the dilation of im with a 20*20 structuring element
         # It is used within peak_local_max function
         image_max = ndi.maximum_filter(im, size=45, mode='constant')
@@ -133,12 +155,7 @@ if __name__ == "__main__":
         
         # Comparison between image_max and im to find the coordinates of local maxima
         coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
-        #coordinates = coordinates[coordinates < 150]
-        
-        kmeans = KMeans(n_clusters=150)
-        kmeans.fit(coordinates)
-        centers = kmeans.cluster_centers_
-        
+        coordinates = distance(coordinates, 20)
         
         
         # display results
@@ -162,7 +179,8 @@ if __name__ == "__main__":
         
         plt.show()
         
-        #%%
-    
-        im2 = np.around(im, decimals = 3)
-        mid = np.mean(im2)
+
+        
+        
+        
+        
