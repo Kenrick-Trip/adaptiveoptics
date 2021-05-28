@@ -202,10 +202,11 @@ def B_matrix(im,coordinates,slopes):
     
     #Cropped image to fit unit circle
     im_unit = im[midy-R:midy+R,midx-R:midx+R]
-    
+  
     #transformed coordinates of centres
     cor_unit = coordinates - np.ones((len(coordinates),2))*[midy-R,midx-R]
-
+    cor_unit = cor_unit.astype(int)
+   
     x = np.linspace(-1,1,len(im_unit))
     y = np.linspace(-1,1,len(im_unit))
 
@@ -213,7 +214,7 @@ def B_matrix(im,coordinates,slopes):
     xv, yv = np.meshgrid(x,y)
     
     plt.pcolor(xv,yv,im_unit)
-    plt.set_title('Unit grid')
+    plt.title('Unit grid')
     
     ## Zernike
     cart = RZern(6)
@@ -224,17 +225,16 @@ def B_matrix(im,coordinates,slopes):
         c *= 0.0
         c[i] = 1.0
         Phi = cart.eval_grid(c, matrix=True)
-        Zr = Phi[coordinates[:,0],coordinates[:,1]] #Zernike function at reference points
+        Zr = Phi[cor_unit[:,0],cor_unit[:,1]] #Zernike function at reference points
        
-        Zy = Phi[coordinates[:,0]+slopes[:,0],coordinates[:,1]] #reference points plus delta y
+        Zy = Phi[cor_unit[:,0]+slopes[:,0],cor_unit[:,1]] #reference points plus delta y
         grady = (Zy-Zr)/slopes[:,0]
     
-        Zx = Phi[coordinates[:,0],coordinates[:,1]+slopes[:,1]] #reference points plus delta x
+        Zx = Phi[cor_unit[:,0],cor_unit[:,1]+slopes[:,1]] #reference points plus delta x
         gradx = (Zx-Zr)/slopes[:,1]
+    #store grady and gradx in B????
     
-        #store grady and gradx in B??
-        
-    return B
+    return gradx, grady
 
         
         
