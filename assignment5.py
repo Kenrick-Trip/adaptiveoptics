@@ -14,6 +14,7 @@ from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
 from sklearn.cluster import KMeans
 import time as time
+from zernike import RZern
 
 
 
@@ -181,6 +182,60 @@ if __name__ == "__main__":
         
 
         
+
+
+
+def B_matrix(im,coordinates,slopes):
+    #Diameter of sensor in x and y direction
+    Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
+    Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
+    D = np.maximum(Dx,Dy)
+
+    #center of sensor
+    midy = np.int(np.max(coordinates[:,0])-Dy/2)
+    midx = np.int(np.max(coordinates[:,1])-Dx/2)
+
+    #Maximale uitwijking tov midden 
+    Ry = np.int(np.max(np.abs(coordinates[0]-midy)))
+    Rx = np.int(np.max(np.abs(coordinates[1]-midx)))
+    R = np.maximum(Rx,Ry)+30
+    
+    #Cropped image to fit unit circle
+    im_unit = im[midy-R:midy+R,midx-R:midx+R]
+    
+    #transformed coordinates of centres
+    cor_unit = coordinates - np.ones((len(coordinates),2))*[midy-R,midx-R]
+
+    x = np.linspace(-1,1,len(im_unit))
+    y = np.linspace(-1,1,len(im_unit))
+
+
+    xv, yv = np.meshgrid(x,y)
+    
+    plt.pcolor(xv,yv,im_unit)
+    plt.set_title('Unit grid')
+    
+    ## Zernike
+    cart = RZern(6)
+    cart.make_cart_grid(xv, yv)
+    c = np.zeros(cart.nk)
+    
+    for i in range(1, 10): #set desired zernike range
+        c *= 0.0
+        c[i] = 1.0
+        Phi = cart.eval_grid(c, matrix=True)
+        Zr = Phi[coordinates[:,0],coordinates[:,1]] #Zernike function at reference points
+       
+        Zy = Phi[coordinates[:,0]+slopes[:,0],coordinates[:,1]] #reference points plus delta y
+        grady = (Zy-Zr)/slopes[:,0]
+    
+        Zx = Phi[coordinates[:,0],coordinates[:,1]+slopes[:,1]] #reference points plus delta x
+        gradx = (Zx-Zr)/slopes[:,1]
+    
+        #store grady and gradx in B??
+        
+    return B
+
         
         
         
