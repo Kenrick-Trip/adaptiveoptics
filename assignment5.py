@@ -46,20 +46,20 @@ def grabframes(nframes, cameraIndex=0):
     return imgs
 
 def create_ref_grid(ShackHartmann):
-    # TODO: Load Shack hartmann image
-    # ShackHartmann= []
-    
+     
     SH_round = np.around(ShackHartmann, decimals = 3)
-    threshold = np.mean(SH_round)*3 #determine threshold in less arbitrary way
-    #Find the local coordinates on the total matrix 
-    coordinates = peak_local_max(ShackHartmann, min_distance=10, indices = True, threshold_abs =  threshold)
+    threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
+     #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    centers = distance(coordinates,10)
     
-    #grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
-    #grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+    grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+
     
-    centers = distance(coordinates)
     
-    return centers
+    return centers, grid_ref
+
 
 def get_slopes(reference,grid_coor, coordinates, radius):
       
@@ -74,35 +74,35 @@ def get_slopes(reference,grid_coor, coordinates, radius):
     for i in range(ref_size):
         
         centroid = reference[i,:] 
-        
+        n = 0
         for xr in range(-radius,radius):
             for yr in range(-radius,radius):
                 x0 = centroid[0] + xr
                 y0 = centroid[1] + yr
                 
+                
                 if grid_coor[x0,y0] == 1:
-                    difference[i,0] = x0
-                    difference[i,1] = y0
+                    difference[i,0] += x0 
+                    difference[i,1] += y0
+                    n+= 1
                     difference[i,2] = centroid[0]
                     difference[i,3] = centroid[1]
-                    difference[i,4] = x0 - centroid[0]
-                    difference[i,5] = y0 - centroid[1]
-                    break
-            if grid_coor[x0,y0] == 1:
-                break
+
+                    #break
+            #if grid_coor[x0,y0] == 1:
+             #   break
+        difference[i,0] = np.florr(difference[i,0]/n)
+        difference[i,1] = np.floor(difference[i,1]/n)
             
-            
+        difference[i,4] = difference[i,0] - centroid[0]
+        difference[i,5] = difference[i,1] - centroid[1]
     return difference
-        
-    
+
 def distance(pos, threshold):
-    
     """
     Calculates relative positions and distances between particles.
     """
-    
-    # print(pos.shape)
-    
+    #print(pos.shape)
     num_spots = pos.shape[0]
     numDim = pos.shape[1]
     
@@ -124,10 +124,9 @@ def distance(pos, threshold):
     indices = np.unique(indices, axis = 0)
     
     pos = np.delete(pos, indices[0,:],axis = 0)
-    
-    # print(pos.shape)
-    
+    #print(pos.shape)
     return pos
+
     
 #%% Test code to test reference grid
 
