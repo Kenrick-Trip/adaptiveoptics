@@ -185,7 +185,21 @@ if __name__ == "__main__":
 
 
 
-def B_matrix(im,coordinates,slopes):
+def Zernike(mode,im_unit):
+    cart = RZern(6)
+    x = np.linspace(-1,1,len(im_unit))
+    y = np.linspace(-1,1,len(im_unit))
+    xv, yv = np.meshgrid(x,y)
+    
+    cart.make_cart_grid(xv, yv)
+    c = np.zeros(cart.nk)
+    c[mode] = 1.0
+    Phi = cart.eval_grid(c, matrix=True)
+    
+    return Phi
+
+
+def B_matrix(im,coordinates,slopes,modes):
     #Diameter of sensor in x and y direction
     Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
     Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
@@ -220,8 +234,13 @@ def B_matrix(im,coordinates,slopes):
     cart = RZern(6)
     cart.make_cart_grid(xv, yv)
     c = np.zeros(cart.nk)
+    B = np.zeros((coordinates.shape[0]*2,modes))
+
     
-    for i in range(1, 10): #set desired zernike range
+
+    
+    for i in range(1, modes): #set desired zernike range
+        
         c *= 0.0
         c[i] = 1.0
         Phi = cart.eval_grid(c, matrix=True)
@@ -232,10 +251,30 @@ def B_matrix(im,coordinates,slopes):
     
         Zx = Phi[cor_unit[:,0],cor_unit[:,1]+slopes[:,1]] #reference points plus delta x
         gradx = (Zx-Zr)/slopes[:,1]
-    #store grady and gradx in B????
+        B[:,i] = np.concatenate((gradx, grady))
     
-    return gradx, grady
+    return B, im_unit
 
+def wavefront_reconstruction(B,slopes,modes,im_unit):
+    slopes = np.reshape(slopes, 50, order='F')
+    inverse = np.linalg.pinv(B).dot(slopes)
+    zernike = np.zeros(im_unit.shape)
+    
+    for i in range(modes):
+        if inverse[i] > 0:
+            zernike = zernike + Zernike(i,im_unit)
+        
+    plt.imshow(zernike)
+    return inverse 
+
+slopes = np.random.randint(5, size = (len(coordinates),2))
+modes = 10
+B, im_unit = B_matrix(im,coordinates,slopes,modes)
+
+B[np.isnan(B)] =0
+
+
+inverse = wavefront_reconstruction(B,slopes,modes, im_unit)
         
         
         
