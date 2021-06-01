@@ -127,62 +127,6 @@ def distance(pos, threshold):
     #print(pos.shape)
     return pos
 
-    
-#%% Test code to test reference grid
-
-if __name__ == "__main__":
-    from dm.okotech.dm import OkoDM
-    with OkoDM(dmtype=1) as dm:   
-            
-        #im = plt.imread('plot1.PNG')
-        #im= im[10:220,50:300,0]
-        
-        
-        # test with real image:
-        A =  np.random.uniform(-1,1,size=len(dm))
-        B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
-        dm.setActuators(B)    
-        im = grabframes(3, 2)[-1] 
-
-    
-         
-        # image_max is the dilation of im with a 20*20 structuring element
-        # It is used within peak_local_max function
-        image_max = ndi.maximum_filter(im, size=45, mode='constant')
-        
-        im2 = np.around(im, decimals = 3)
-        mid = np.mean(im2)*1.5
-        
-        # Comparison between image_max and im to find the coordinates of local maxima
-        coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
-        coordinates = distance(coordinates, 20)
-        
-        
-        # display results
-        fig, axes = plt.subplots(1, 3, figsize=(8, 3), sharex=True, sharey=True )
-        ax = axes.ravel()
-        ax[0].imshow(im, cmap=plt.cm.gray)
-        ax[0].axis('off')
-        ax[0].set_title('Original')
-        
-        ax[1].imshow(image_max, cmap=plt.cm.gray)
-        ax[1].axis('off')
-        ax[1].set_title('Maximum filter')
-        
-        ax[2].imshow(im, cmap=plt.cm.gray)
-        ax[2].autoscale(False)
-        ax[2].plot(coordinates[:, 1], coordinates[:, 0], 'r.')
-        ax[2].axis('off')
-        ax[2].set_title('Peak local max')
-        
-        fig.tight_layout()
-        
-        plt.show()
-        
-
-        
-
-
 
 def B_matrix(im,coordinates,slopes):
     #Diameter of sensor in x and y direction
@@ -235,6 +179,107 @@ def B_matrix(im,coordinates,slopes):
     
     return gradx, grady
 
+    
+#%% Test code to test reference grid
+
+if __name__ == "__main__":
+    from dm.okotech.dm import OkoDM
+    with OkoDM(dmtype=1) as dm:   
+            
+        #im = plt.imread('plot1.PNG')
+        #im= im[10:220,50:300,0]
         
         
+        # test with real image:
+        A =  np.random.uniform(-1,1,size=len(dm))
+        B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
+        dm.setActuators(B)    
+        im = grabframes(3, 2)[-1] 
+
+    
+         
+        # image_max is the dilation of im with a 20*20 structuring element
+        # It is used within peak_local_max function
+        image_max = ndi.maximum_filter(im, size=45, mode='constant')
+        
+        im2 = np.around(im, decimals = 3)
+        mid = np.mean(im2)*1.5
+        
+        # Comparison between image_max and im to find the coordinates of local maxima
+        coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
+        coordinates = distance(coordinates, 20)
+        
+        
+        
+        
+        # display results
+        fig, axes = plt.subplots(1, 3, figsize=(8, 3), sharex=True, sharey=True )
+        ax = axes.ravel()
+        ax[0].imshow(im, cmap=plt.cm.gray)
+        ax[0].axis('off')
+        ax[0].set_title('Original')
+        
+        ax[1].imshow(image_max, cmap=plt.cm.gray)
+        ax[1].axis('off')
+        ax[1].set_title('Maximum filter')
+        
+        ax[2].imshow(im, cmap=plt.cm.gray)
+        ax[2].autoscale(False)
+        ax[2].plot(coordinates[:, 1], coordinates[:, 0], 'r.')
+        ax[2].axis('off')
+        ax[2].set_title('Peak local max')
+        
+        fig.tight_layout()
+        
+        plt.show()
+        
+
+        
+
+
+
+
+        
+
+#%% Test get_slopes
+plt.figure()
+im = plt.imread('plot1.PNG')
+im= im[10:220,50:300,0]
+plt.imshow(im)
+
+plt.figure()
+im2 = plt.imread('plot19.PNG')
+im2= im2[10:220,50:300,0]
+plt.imshow(im2)
+
+#coordinates1 = peak_local_max(im, min_distance= 10, indices = True, threshold_abs = mid)
+start = time.time()
+coordinates1,___ = create_ref_grid(im)
+
+#coordinates2 = peak_local_max(im2, min_distance= 10, indices = True, threshold_abs = mid)
+coordinates2,grid2 = create_ref_grid(im2)
+
+
+difference = get_slopes(coordinates,grid2, coordinates2,6)
+
+
+
+
+stop = time.time()
+print(stop - start)
+plt.figure()
+plt.plot(difference[:,0],difference[:,1], 'r.')
+plt.xlim(0,250)
+plt.ylim(0,220)
+
+plt.show()
+
+
+plt.figure()
+plt.plot(coordinates1[:,0],coordinates1[:,1], 'r.')
+plt.plot(difference[:,0],difference[:,1], 'b.')
+plt.xlim(0,250)
+plt.ylim(0,220)
+
+plt.show()        
         
