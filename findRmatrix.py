@@ -13,7 +13,6 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
-from aotools.turbulence.infinitephasescreen import PhaseScreenKolmogorov
 from numpy.linalg import inv
 
 def grabframes(nframes, cameraIndex=0):
@@ -46,8 +45,8 @@ def create_ref_grid(ShackHartmann):
      
     SH_round = np.around(ShackHartmann, decimals = 3)
     threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
-     #Find the local coordinates on the total matrix 
-    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance= 45, indices = True, threshold_abs = 3.5)
     centers = distance(coordinates,10)
     
     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
@@ -60,8 +59,8 @@ def get_slopes(reference,grid_coor, coordinates, radius):
     ref_size = reference.shape[0]
     crd_size = coordinates.shape[0]
 
-    if ref_size != crd_size:
-        raise Warning('number of reference points differs from number of coordinates')
+    #if ref_size != crd_size:
+    #    raise Warning('number of reference points differs from number of coordinates')
     
 
     difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
@@ -121,17 +120,19 @@ def distance(pos, threshold):
     # print(pos.shape)
     return pos
 
-def corr_act_slope(R, A, slope):
-    A = A.transpose
-    n = slope.shape[1]
+def corr_act_slope(R, A, slope, i):
+    A = np.transpose(A)
+    n = slope.shape[0]
     print(n)
-    S = np.zeros((1,2*n))
+    S = np.zeros((2*n,1))
+    
     
     for i in range(n):
-        S[i,i] = slope[i,5]
-        S[1,i+1] = slope[i,6]
-        
-    R = (R + S*(A.transpose)*inv(A*(A.transpose)))/2
+        S[i,0] = slope[i,4]
+        S[i+1,0] = slope[i,5]
+    
+    #R = (R + S*AT*np.linalg.inv(A*AT))/2
+    R = (R + np.divide(S,A))/(i+1)
     return R
 
 
@@ -166,7 +167,7 @@ if __name__ == "__main__":
             
             slopes = get_slopes(coordinates,grid2, coordinates2,6)
             
-            R = corr_act_slope(R, A, slopes)
+            R = corr_act_slope(R, A, slopes, i)
             print(R)
         
         
