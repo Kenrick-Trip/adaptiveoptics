@@ -42,6 +42,19 @@ def grabframes(nframes, cameraIndex=0):
     
     return imgs
 
+def create_ref_grid(ShackHartmann):
+     
+    SH_round = np.around(ShackHartmann, decimals = 3)
+    threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
+     #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    centers = distance(coordinates,10)
+    
+    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+    grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+    
+    return centers, grid_ref
+
 def get_slopes(reference,grid_coor, coordinates, radius):
       
     ref_size = reference.shape[0]
@@ -130,19 +143,29 @@ if __name__ == "__main__":
         n = 1000
         R = 0
         
+        #### find reference image: ####
+    
+        # find initial conditions actuator
+        opt_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
+                    -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
+                    0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
+        
+        dm.setActuators(opt_act)    
+        
+        # find reference image
+        im_ref = grabframes(3, 2)[-1] 
+        coordinates,___ = create_ref_grid(im_ref)
+    
         for i in range(n):
             A = np.random.uniform(-1,1,size=len(dm))
             dm.setActuators(A)    
-            im = grabframes(3, 2)[-1] 
+            im2 = grabframes(3, 2)[-1] 
         
             # Comparison between image_max and im to find the coordinates of local maxima
-            coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
-            coordinates = distance(coordinates, 20)
+            coordinates2,grid2 = create_ref_grid(im2)
             
-            reference = 0 # get ref from assignment 6
-            grid_coor = 0 # get grid coordinates from ?
-            radius = 0 # what determines the radius ?
-            slopes = get_slopes(reference, grid_coor, coordinates, radius)
+            slopes = get_slopes(coordinates,grid2, coordinates2,6)
+            
             R = corr_act_slope(R, A, slopes)
             print(R)
         

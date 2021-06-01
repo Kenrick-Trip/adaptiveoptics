@@ -42,6 +42,21 @@ def grabframes(nframes, cameraIndex=0):
     
     return imgs
 
+def create_ref_grid(ShackHartmann):
+     
+    SH_round = np.around(ShackHartmann, decimals = 3)
+    threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
+     #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    centers = distance(coordinates,10)
+    
+    grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
+    grid_ref[coordinates[:,0],coordinates[:,1]] = 1
+
+    
+    
+    return centers, grid_ref
+
 def add_disturbance(im, phase_screen):
     if np.max(phase_screen) > 0.1:
         return phase_screen.add_row()
@@ -169,26 +184,29 @@ def converge_to_zernike(dm, target_zernike):
     # constant gain
     Kp = 2 
     
-    #### set all initial conditions: ####
+    #### find reference image: ####
     
     # find initial conditions actuator
-    init_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
+    opt_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
                 -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
                 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
     
-    dm.setActuators(init_act)    
+    dm.setActuators(opt_act)    
     
-    # find initial image
-    im = grabframes(3, 2)[-1] 
+    # find reference image
+    im_ref = grabframes(3, 2)[-1] 
+    coordinates,___ = create_ref_grid(im_ref)
+    
+    #### set all initial conditions: ####
+    
+    init_act = np.zeros(len(dm))
+    dm.setActuators(init_act)
+    im2 = grabframes(3, 2)[-1] 
     
     # find initial slopes
-    coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
-    coordinates = distance(coordinates, 20)
-    reference = 0 # get ref from assignment 6
-    grid_coor = 0 # get grid coordinates from ?
-    radius = 0 # what determines the radius ?
-    s = get_slopes(reference, grid_coor, coordinates, radius)
+    coordinates2,grid2 = create_ref_grid(im2)
     
+    s = get_slopes(coordinates,grid2, coordinates2,6)
     
     # find some allowed error value
     err = 1e-3
@@ -207,12 +225,10 @@ def converge_to_zernike(dm, target_zernike):
         act = act_from_slopes(R, err_s)
         
         
-        dm.setActuators(act)    
-        reference = 0 # get ref from assignment 6
-        grid_coor = 0 # get grid coordinates from ?
-        radius = 0 # what determines the radius ?
-        s = get_slopes(reference, grid_coor, coordinates, radius)
-        s = get_slopes() # (placeholder)
+        dm.setActuators(act)
+        im2 = grabframes(3, 2)[-1] 
+        coordinates2,grid2 = create_ref_grid(im2)
+        s = get_slopes(coordinates,grid2, coordinates2,6)
         R = corr_act_slope(R, act, (s - tar_s)*Kp)
         print(R)
     

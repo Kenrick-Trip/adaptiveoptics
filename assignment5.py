@@ -55,8 +55,6 @@ def create_ref_grid(ShackHartmann):
     
     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
     grid_ref[coordinates[:,0],coordinates[:,1]] = 1
-
-    
     
     return centers, grid_ref
 
