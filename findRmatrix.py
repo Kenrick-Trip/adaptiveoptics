@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 27 19:15:07 2021
+Created on Mon May 31 19:24:33 2021
 
 @author: Kenrick Trip
 """
@@ -42,26 +42,6 @@ def grabframes(nframes, cameraIndex=0):
     
     return imgs
 
-def add_disturbance(im, phase_screen):
-    if np.max(phase_screen) > 0.1:
-        return phase_screen.add_row()
-    else:
-        nx = im.shape[0]
-        print(nx)
-        r = 1280/1024
-        lx = r/nx
-        r0 = 0.1
-        l0 = 100
-        return PhaseScreenKolmogorov(nx,lx,r0,l0)
-    
-def add_noise(slopes):
-    n = slopes.shape[0]
-    dist = 0.01 # max size of disturbance
-    for i in range(n):
-        slopes[i,1] = slopes[i,1] + (0.5-np.rand.random(1,1))*2*dist
-        slopes[i,2] = slopes[i,2] + (0.5-np.rand.random(1,1))*2*dist
-    return slopes
-
 def get_slopes(reference,grid_coor, coordinates, radius):
       
     ref_size = reference.shape[0]
@@ -95,32 +75,6 @@ def get_slopes(reference,grid_coor, coordinates, radius):
             
     return difference
 
-
-def zernike_to_slopes(B, z):
-    return np.dot(B, z)
-
-def corr_act_slope(R, A, slope):
-    A = A.transpose
-    n = slope.shape[1]
-    S = np.zeros((1,2*n))
-    
-    for i in range(n):
-        S[1,i] = slope[i,1]
-        S[1,i+1] = slope[i,2]
-        
-    R = (R + S*(A.transpose)*inv(A*(A.transpose)))/2
-    return R, S
-
-def act_from_slopes(R, slope):
-    n = slope.shape[1]
-    S = np.zeros((1,2*n))
-    
-    for i in range(n):
-        S[1,i] = slope[i,1]
-        S[1,i+1] = slope[i,2]
-        
-    return np.linalg.pinv(R)*S
-
 def distance(pos, threshold):
     
     """
@@ -152,74 +106,59 @@ def distance(pos, threshold):
     pos = np.delete(pos, indices[0,:],axis = 0)
     
     # print(pos.shape)
-    
     return pos
 
-def converge_to_zernike(dm, target_zernike):
-    B = np.zeros(target_zernike) # (placeholder)
+def corr_act_slope(R, A, slope):
+    A = A.transpose
+    n = slope.shape[1]
+    print(n)
+    S = np.zeros((1,2*n))
     
-    # target slopes and 
-    tar_s = zernike_to_slopes(B, target_zernike)
+    for i in range(n):
+        S[i,i] = slope[i,5]
+        S[1,i+1] = slope[i,6]
+        
+    R = (R + S*(A.transpose)*inv(A*(A.transpose)))/2
+    return R
 
-    #### control loop settings: ####
-    
-    # find some allowed error value
-    err = 1e-3
-    
-    # constant gain
-    Kp = 2 
-    
-    #### set all initial conditions: ####
-    
-    # find initial conditions actuator
-    init_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
-                -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
-                0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
-    
-    dm.setActuators(init_act)    
-    
-    # find initial image
-    im = grabframes(3, 2)[-1] 
-    
-    # find initial slopes
-    coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
-    coordinates = distance(coordinates, 20)
-    reference = 0 # get ref from assignment 6
-    grid_coor = 0 # get grid coordinates from ?
-    radius = 0 # what determines the radius ?
-    s = get_slopes(reference, grid_coor, coordinates, radius)
-    
-    
-    # find some allowed error value
-    err = 1e-3
-    
-    # find correlation slopes and actuators:
-    R_init = np.zeros((2*s.shape[1],len(dm)))
-    R = corr_act_slope(R_init, init_act, (s - tar_s)*Kp)
-    
-    #https://www.osapublishing.org/oe/fulltext.cfm?uri=oe-26-2-1655&id=380836
-    
-    
-    #### control loop: ####
-    
-    while s - tar_s > err:
-        err_s = (s - tar_s)*Kp # B matrix??
-        act = act_from_slopes(R, err_s)
-        
-        
-        dm.setActuators(act)    
-        reference = 0 # get ref from assignment 6
-        grid_coor = 0 # get grid coordinates from ?
-        radius = 0 # what determines the radius ?
-        s = get_slopes(reference, grid_coor, coordinates, radius)
-        s = get_slopes() # (placeholder)
-        R = corr_act_slope(R, act, (s - tar_s)*Kp)
-        print(R)
-    
-    
+
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
-    with OkoDM(dmtype=1) as dm: 
-        # define zernike polynomial we want to converge to
-        target_zernike = 60
-        converge_to_zernike(dm, target_zernike)
+    with OkoDM(dmtype=1) as dm:   
+            
+        # test with real image:
+        n = 1000
+        R = 0
+        
+        for i in range(n):
+            A = np.random.uniform(-1,1,size=len(dm))
+            dm.setActuators(A)    
+            im = grabframes(3, 2)[-1] 
+        
+            # Comparison between image_max and im to find the coordinates of local maxima
+            coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
+            coordinates = distance(coordinates, 20)
+            
+            reference = 0 # get ref from assignment 6
+            grid_coor = 0 # get grid coordinates from ?
+            radius = 0 # what determines the radius ?
+            slopes = get_slopes(reference, grid_coor, coordinates, radius)
+            R = corr_act_slope(R, A, slopes)
+            print(R)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

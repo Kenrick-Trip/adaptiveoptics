@@ -179,6 +179,77 @@ def B_matrix(im,coordinates,slopes):
     
     return gradx, grady
 
+def Zernike(mode,im_unit):
+    cart = RZern(6)
+    x = np.linspace(-1,1,len(im_unit))
+    y = np.linspace(-1,1,len(im_unit))
+    xv, yv = np.meshgrid(x,y)
+    
+    cart.make_cart_grid(xv, yv)
+    c = np.zeros(cart.nk)
+    c[mode] = 1.0
+    Phi = cart.eval_grid(c, matrix=True)
+    
+    return Phi
+
+
+def B_matrix(im,coordinates,slopes,modes):
+    #Diameter of sensor in x and y direction
+    Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
+    Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
+    D = np.maximum(Dx,Dy)
+
+    xv, yv = np.meshgrid(x,y)
+    
+    plt.pcolor(xv,yv,im_unit)
+    plt.title('Unit grid')
+    
+    ## Zernike
+    cart = RZern(6)
+    cart.make_cart_grid(xv, yv)
+    c = np.zeros(cart.nk)
+    B = np.zeros((coordinates.shape[0]*2,modes))
+
+    
+
+    
+    for i in range(1, modes): #set desired zernike range
+        
+        c *= 0.0
+        c[i] = 1.0
+        Phi = cart.eval_grid(c, matrix=True)
+        Zr = Phi[cor_unit[:,0],cor_unit[:,1]] #Zernike function at reference points
+       
+        Zy = Phi[cor_unit[:,0]+slopes[:,0],cor_unit[:,1]] #reference points plus delta y
+        grady = (Zy-Zr)/slopes[:,0]
+    
+        Zx = Phi[cor_unit[:,0],cor_unit[:,1]+slopes[:,1]] #reference points plus delta x
+        gradx = (Zx-Zr)/slopes[:,1]
+        B[:,i] = np.concatenate((gradx, grady))
+    
+    return B, im_unit
+
+def wavefront_reconstruction(B,slopes,modes,im_unit):
+    slopes = np.reshape(slopes, 50, order='F')
+    inverse = np.linalg.pinv(B).dot(slopes)
+    zernike = np.zeros(im_unit.shape)
+    
+    for i in range(modes):
+        if inverse[i] > 0:
+            zernike = zernike + Zernike(i,im_unit)
+        
+    plt.imshow(zernike)
+    return inverse 
+
+slopes = np.random.randint(5, size = (len(coordinates),2))
+modes = 10
+B, im_unit = B_matrix(im,coordinates,slopes,modes)
+
+B[np.isnan(B)] =0
+
+
+inverse = wavefront_reconstruction(B,slopes,modes, im_unit)
+
     
 #%% Test code to test reference grid
 
@@ -239,8 +310,9 @@ if __name__ == "__main__":
 
 
 
-        
 
+        
+        
 #%% Test get_slopes
 plt.figure()
 im = plt.imread('plot1.PNG')
@@ -251,6 +323,7 @@ plt.figure()
 im2 = plt.imread('plot19.PNG')
 im2= im2[10:220,50:300,0]
 plt.imshow(im2)
+
 
 #coordinates1 = peak_local_max(im, min_distance= 10, indices = True, threshold_abs = mid)
 start = time.time()
@@ -281,5 +354,5 @@ plt.plot(difference[:,0],difference[:,1], 'b.')
 plt.xlim(0,250)
 plt.ylim(0,220)
 
-plt.show()        
+plt.show()     
         
