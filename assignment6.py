@@ -13,7 +13,7 @@ from skimage.feature import peak_local_max
 from skimage import data, img_as_float
 from cameras.ueye_camera import uEyeCamera
 from pyueye import ueye
-from aotools.turbulence.infinitephasescreen import PhaseScreenKolmogorov
+# from aotools.turbulence.infinitephasescreen import PhaseScreenKolmogorov
 from numpy.linalg import inv
 
 def grabframes(nframes, cameraIndex=0):
@@ -46,28 +46,26 @@ def create_ref_grid(ShackHartmann):
      
     SH_round = np.around(ShackHartmann, decimals = 3)
     threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
-     #Find the local coordinates on the total matrix 
-    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    #Find the local coordinates on the total matrix 
+    coordinates = peak_local_max(ShackHartmann, min_distance= 45, indices = True, threshold_abs = 3.5)
     centers = distance(coordinates,10)
     
     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
     grid_ref[coordinates[:,0],coordinates[:,1]] = 1
-
-    
     
     return centers, grid_ref
 
-def add_disturbance(im, phase_screen):
-    if np.max(phase_screen) > 0.1:
-        return phase_screen.add_row()
-    else:
-        nx = im.shape[0]
-        print(nx)
-        r = 1280/1024
-        lx = r/nx
-        r0 = 0.1
-        l0 = 100
-        return PhaseScreenKolmogorov(nx,lx,r0,l0)
+#def add_disturbance(im, phase_screen):
+#    if np.max(phase_screen) > 0.1:
+#        return phase_screen.add_row()
+#    else:
+#        nx = im.shape[0]
+#        print(nx)
+#        r = 1280/1024
+#        lx = r/nx
+#        r0 = 0.1
+#        l0 = 100
+#        return PhaseScreenKolmogorov(nx,lx,r0,l0)
     
 def add_noise(slopes):
     n = slopes.shape[0]
@@ -82,8 +80,8 @@ def get_slopes(reference,grid_coor, coordinates, radius):
     ref_size = reference.shape[0]
     crd_size = coordinates.shape[0]
 
-    if ref_size != crd_size:
-        raise Warning('number of reference points differs from number of coordinates')
+    #if ref_size != crd_size:
+    #    raise Warning('number of reference points differs from number of coordinates')
     
 
     difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
@@ -126,15 +124,20 @@ def corr_act_slope(R, A, slope):
     R = (R + S*(A.transpose)*inv(A*(A.transpose)))/2
     return R, S
 
-def act_from_slopes(R, slope):
-    n = slope.shape[1]
-    S = np.zeros((1,2*n))
+def reshape_slopes(slope, points):
+    n = int(points/2)
+    S = [(slope[:,4], slope[:,5].T)]
+    S = np.reshape(S, (2*n,1), order='F')
+    return S
+
+def act_from_slopes(A, slope, points):
+    # n = int(points/2)
+    # slope = slope[0:n, :]
+    # S = reshape_slopes(slope, points)
     
-    for i in range(n):
-        S[1,i] = slope[i,1]
-        S[1,i+1] = slope[i,2]
-        
-    return np.linalg.pinv(R)*S
+    res = A.dot(slope)
+    # print(res.shape)
+    return res
 
 def distance(pos, threshold):
     
@@ -193,47 +196,78 @@ def initial_conditions(init_act):
     
     return coordinates, grid
 
-def converge_to_zernike(dm, target_zernike):
-    #### find target slopes from Zernike ####
+def converge_to_zernike(dm, target_zernike, points, A, iterations):
+    #### TODO: find target slopes from Zernike ####
     # B = np.zeros(target_zernike) # (placeholder)
     # target slopes
     #tar_s = zernike_to_slopes(B, target_zernike)
     
     # test slopes:
-    tar_s = np.random.uniform(-1,1,size=len(dm))
-
+    tar_s = np.random.randint(5,size=(points)) - np.ones(points)*2
+    tar_act = act_from_slopes(A, tar_s, points)
+    print(tar_act)
+    
     #### control loop settings: ####   
     # find some allowed error value
     err = 1e-3
     # constant gain
-    Kp = 2 
+    Kp = 0.5
     
     #### find reference image: ####
     ref_coordinates = create_ref_coordinates()
     
     #### set all initial conditions: ####
-    init_act = np.zeros(len(dm))
+    init_act = np.random.uniform(-1,1,size=len(dm)) #np.zeros(len(dm))
     init_coordinates, init_grid = initial_conditions(init_act) 
     s = get_slopes(ref_coordinates, init_grid, init_coordinates, 6)
-    new_act = 0
+    n = int(points/2)
+    s = s[0:n,:]
+    s = reshape_slopes(s, points)
     
-    R = np.zeros((len(dm), 150)) # placeholder
-    act = act_from_slopes(R, s)
+
+    act = init_act
+    new_act = act_from_slopes(A, s, points)
+    new_act = np.transpose(new_act)
     
     #https://www.osapublishing.org/oe/fulltext.cfm?uri=oe-26-2-1655&id=380836
     
+    #iterations = 100
+    
+    error = np.zeros((iterations, len(dm)))
+    error[0,:] = tar_act - new_act
+    # print(error[0,:])
+    print(np.sum(np.abs(tar_act - new_act)))
     
     #### control loop: ####
-    while s - tar_s > err:
-        act = act + new_act
+    
+    # while np.amax(error) > err:
+    for i in range(iterations - 1):
+        act = act - (tar_act - new_act)*Kp
+        act = np.clip(act[0], -1, 1)
         print(act)
+
         dm.setActuators(act)
         
         im2 = grabframes(3, 2)[-1] 
         coordinates, grid = create_ref_grid(im2)
         s = get_slopes(ref_coordinates, grid, coordinates, 6)
-        new_act = act_from_slopes(R, (tar_s - s)*Kp)
+        n = int(points/2)
+        s = s[0:n,:]
+        s = reshape_slopes(s, points)
         
+        new_act = act_from_slopes(A, s, points)
+        new_act = np.transpose(new_act)
+        
+        print(new_act)
+        
+        error[i+1,:] = tar_act - new_act
+        # print(error[i+1,:])
+        print(np.sum(np.abs(tar_act - new_act)))
+        
+        # if np.all((new_act == 0)):
+        #    break
+    
+    return tar_act, act, new_act, error
 
     
     
@@ -241,5 +275,16 @@ if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm: 
         # define zernike polynomial we want to converge to
+        A = np.load('influence_matrix100.npy')
         target_zernike = 60
-        converge_to_zernike(dm, target_zernike)
+        points = 100
+        iterations = 80
+        tar_act, act, new_act, error = converge_to_zernike(dm, target_zernike, points, A, iterations)
+        
+        err = np.zeros(iterations)
+        
+        for i in range(iterations):
+            err[i] = np.sum(np.abs(error[i,:]))
+            
+        it = np.arange(iterations)
+        plt.plot(it, err)

@@ -127,8 +127,8 @@ if __name__ == "__main__":
                     if SHarray[k,i] > 1.2:
                         SHpoints[k,i] = 1
             
-            plt.scatter(SHpoints)
-            #plt.imshow(SHpoints, cmap='gray')
+            #plt.scatter(SHpoints)
+            plt.imshow(SHpoints, cmap='gray')
             #plt.imshow(img[-1]) #,aspect=1/7) #, cmap='gist_ncar')
             #plt.colorbar()
             

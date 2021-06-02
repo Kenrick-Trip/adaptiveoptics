@@ -120,22 +120,24 @@ def distance(pos, threshold):
     # print(pos.shape)
     return pos
 
-def reshape_slopes(slope):
-    print(slope)
-    n = slope.shape[0]
-    S = np.array(slope[:,4], slope[:,5])
-    S = np.reshape(S, (1,2*n))
-    print(S)
+def reshape_slopes(slope, points):
+    n = int(points/2)
+    S = [(slope[:,4], slope[:,5].T)]
+    S = np.reshape(S, (2*n,1), order='F')
     return S
 
 
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm:   
-            
-        # test with real image:
-        R = 0
         
+        points = 100
+        
+        # test with real image:
+        R = np.zeros((points, len(dm)))
+        n = np.zeros(len(dm))
+        
+    
         #### find reference image: ####
     
         # find initial conditions actuator
@@ -155,9 +157,11 @@ if __name__ == "__main__":
             coordinates2,grid2 = create_ref_grid(im2)
             
             slope = get_slopes(coordinates,grid2, coordinates2, 6)
+            n = int(points/2)
+            slope = slope[0:n, :]
             
-            R[i] = reshape_slopes(slope)
-            print(R)
+            S = reshape_slopes(slope, points)
+            R[0:2*slope.shape[0],i] = S[:,0]
         
         A = np.linalg.pinv(R)
         
