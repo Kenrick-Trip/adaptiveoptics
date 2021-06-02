@@ -120,20 +120,13 @@ def distance(pos, threshold):
     # print(pos.shape)
     return pos
 
-def corr_act_slope(R, A, slope, i):
-    A = np.transpose(A)
+def reshape_slopes(slope):
+    print(slope)
     n = slope.shape[0]
-    print(n)
-    S = np.zeros((2*n,1))
-    
-    
-    for i in range(n):
-        S[i,0] = slope[i,4]
-        S[i+1,0] = slope[i,5]
-    
-    #R = (R + S*AT*np.linalg.inv(A*AT))/2
-    R = (R + np.divide(S,A))/(i+1)
-    return R
+    S = np.array(slope[:,4], slope[:,5])
+    S = np.reshape(S, (1,2*n))
+    print(S)
+    return S
 
 
 if __name__ == "__main__":
@@ -141,35 +134,32 @@ if __name__ == "__main__":
     with OkoDM(dmtype=1) as dm:   
             
         # test with real image:
-        n = 1000
         R = 0
         
         #### find reference image: ####
     
         # find initial conditions actuator
-        opt_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
-                    -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
-                    0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
-        
-        dm.setActuators(opt_act)    
+        act = np.zeros(len(dm))
+        dm.setActuators(act)    
         
         # find reference image
         im_ref = grabframes(3, 2)[-1] 
         coordinates,___ = create_ref_grid(im_ref)
     
-        for i in range(n):
-            A = np.random.uniform(-1,1,size=len(dm))
-            dm.setActuators(A)    
+        for i in range(len(dm)-1):
+            act[i] = 1
+            dm.setActuators(act)    
             im2 = grabframes(3, 2)[-1] 
         
             # Comparison between image_max and im to find the coordinates of local maxima
             coordinates2,grid2 = create_ref_grid(im2)
             
-            slopes = get_slopes(coordinates,grid2, coordinates2,6)
+            slope = get_slopes(coordinates,grid2, coordinates2, 6)
             
-            R = corr_act_slope(R, A, slopes, i)
+            R[i] = reshape_slopes(slope)
             print(R)
         
+        A = np.linalg.pinv(R)
         
         
         

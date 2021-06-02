@@ -170,22 +170,7 @@ def distance(pos, threshold):
     
     return pos
 
-def converge_to_zernike(dm, target_zernike):
-    B = np.zeros(target_zernike) # (placeholder)
-    
-    # target slopes and 
-    tar_s = zernike_to_slopes(B, target_zernike)
-
-    #### control loop settings: ####
-    
-    # find some allowed error value
-    err = 1e-3
-    
-    # constant gain
-    Kp = 2 
-    
-    #### find reference image: ####
-    
+def create_ref_coordinates():
     # find initial conditions actuator
     opt_act = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
                 -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
@@ -197,40 +182,59 @@ def converge_to_zernike(dm, target_zernike):
     im_ref = grabframes(3, 2)[-1] 
     coordinates,___ = create_ref_grid(im_ref)
     
-    #### set all initial conditions: ####
-    
-    init_act = np.zeros(len(dm))
+    return coordinates
+
+def initial_conditions(init_act):
     dm.setActuators(init_act)
     im2 = grabframes(3, 2)[-1] 
     
     # find initial slopes
-    coordinates2,grid2 = create_ref_grid(im2)
+    coordinates, grid = create_ref_grid(im2)
     
-    s = get_slopes(coordinates,grid2, coordinates2,6)
+    return coordinates, grid
+
+def converge_to_zernike(dm, target_zernike):
+    #### find target slopes from Zernike ####
+    # B = np.zeros(target_zernike) # (placeholder)
+    # target slopes
+    #tar_s = zernike_to_slopes(B, target_zernike)
     
+    # test slopes:
+    tar_s = np.random.uniform(-1,1,size=len(dm))
+
+    #### control loop settings: ####   
     # find some allowed error value
     err = 1e-3
+    # constant gain
+    Kp = 2 
     
-    # find correlation slopes and actuators:
-    R_init = np.zeros((2*s.shape[1],len(dm)))
-    R = corr_act_slope(R_init, init_act, (s - tar_s)*Kp)
+    #### find reference image: ####
+    ref_coordinates = create_ref_coordinates()
+    
+    #### set all initial conditions: ####
+    init_act = np.zeros(len(dm))
+    init_coordinates, init_grid = initial_conditions(init_act) 
+    s = get_slopes(ref_coordinates, init_grid, init_coordinates, 6)
+    new_act = 0
+    
+    R = np.zeros((len(dm), 150)) # placeholder
+    act = act_from_slopes(R, s)
     
     #https://www.osapublishing.org/oe/fulltext.cfm?uri=oe-26-2-1655&id=380836
     
     
     #### control loop: ####
-    
     while s - tar_s > err:
-        err_s = (s - tar_s)*Kp # B matrix??
-        act = act_from_slopes(R, err_s)
-        
-        
+        act = act + new_act
+        print(act)
         dm.setActuators(act)
+        
         im2 = grabframes(3, 2)[-1] 
-        coordinates2,grid2 = create_ref_grid(im2)
-        s = get_slopes(coordinates,grid2, coordinates2,6)
-        R = corr_act_slope(R, act, (s - tar_s)*Kp)
-        print(R)
+        coordinates, grid = create_ref_grid(im2)
+        s = get_slopes(ref_coordinates, grid, coordinates, 6)
+        new_act = act_from_slopes(R, (tar_s - s)*Kp)
+        
+
     
     
 if __name__ == "__main__":
