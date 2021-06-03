@@ -109,10 +109,8 @@ def get_slopes(reference,grid_coor, coordinates, radius):
     return difference
 
 
-def zernike_to_slopes(B, z,im_unit):
-    target_slopes = np.dot(B, z)
-    target_slopes = target_slopes/(2/len(im_unit))
-    return target_slopes
+def zernike_to_slopes(B, z):
+    return np.dot(B, z)
 
 def corr_act_slope(R, A, slope):
     A = A.transpose
@@ -139,7 +137,7 @@ def act_from_slopes(A, slope, points):
     
     res = A.dot(slope)
     # print(res.shape)
-    return res
+    return res.T
 
 def distance(pos, threshold):
     
@@ -205,7 +203,7 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
     #tar_s = zernike_to_slopes(B, target_zernike)
     
     # test slopes:
-    tar_s = np.random.randint(5,size=(points)) - np.ones(points)*2
+    tar_s = np.zeros(points) #np.random.randint(5,size=(points)) - np.ones(points)*2    
     tar_act = act_from_slopes(A, tar_s, points)
     print(tar_act)
     
@@ -213,13 +211,13 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
     # find some allowed error value
     err = 1e-3
     # constant gain
-    Kp = 0.5
+    Kp = 0.8
     
     #### find reference image: ####
     ref_coordinates = create_ref_coordinates()
     
     #### set all initial conditions: ####
-    init_act = np.random.uniform(-1,1,size=len(dm)) #np.zeros(len(dm))
+    init_act = np.random.uniform(-1,1,size=len(dm))  # np.zeros(len(dm)) #np.random.uniform(-1,1,size=len(dm)) 
     init_coordinates, init_grid = initial_conditions(init_act) 
     s = get_slopes(ref_coordinates, init_grid, init_coordinates, 6)
     n = int(points/2)
@@ -229,23 +227,25 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
 
     act = init_act
     new_act = act_from_slopes(A, s, points)
-    new_act = np.transpose(new_act)
+    #new_act = np.transpose(new_act)
+    new_act = new_act[0]
+    print(new_act)
     
     #https://www.osapublishing.org/oe/fulltext.cfm?uri=oe-26-2-1655&id=380836
     
     #iterations = 100
     
     error = np.zeros((iterations, len(dm)))
-    error[0,:] = tar_act - new_act
+    error[0,:] = np.subtract(tar_act, new_act)
     # print(error[0,:])
-    print(np.sum(np.abs(tar_act - new_act)))
+    print(np.sum(np.abs(np.subtract(tar_act, new_act))))
     
     #### control loop: ####
     
     # while np.amax(error) > err:
     for i in range(iterations - 1):
-        act = act - (tar_act - new_act)*Kp
-        act = np.clip(act[0], -1, 1)
+        act = np.subtract(act, np.subtract(tar_act, new_act)).dot(Kp)
+        act = np.clip(act, -1, 1)
         print(act)
 
         dm.setActuators(act)
@@ -258,18 +258,19 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
         s = reshape_slopes(s, points)
         
         new_act = act_from_slopes(A, s, points)
-        new_act = np.transpose(new_act)
+        #new_act = np.transpose(new_act)
+        new_act = new_act[0]
         
         print(new_act)
         
-        error[i+1,:] = tar_act - new_act
+        error[i+1,:] = np.subtract(tar_act, new_act)
         # print(error[i+1,:])
-        print(np.sum(np.abs(tar_act - new_act)))
+        print(np.sum(np.abs(np.subtract(tar_act, new_act))))
         
         # if np.all((new_act == 0)):
         #    break
     
-    return tar_act, act, new_act, error
+    return tar_act, act, new_act, error, s
 
     
     
@@ -277,11 +278,11 @@ if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm: 
         # define zernike polynomial we want to converge to
-        A = np.load('influence_matrix100.npy')
+        A = np.load('influence_matrix.npy')
         target_zernike = 60
         points = 100
         iterations = 80
-        tar_act, act, new_act, error = converge_to_zernike(dm, target_zernike, points, A, iterations)
+        tar_act, act, new_act, error, s = converge_to_zernike(dm, target_zernike, points, A, iterations)
         
         err = np.zeros(iterations)
         
