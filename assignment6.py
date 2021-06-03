@@ -110,7 +110,8 @@ def get_slopes(reference,grid_coor, coordinates, radius):
 
 
 def zernike_to_slopes(B, z):
-    return np.dot(B, z)
+    target_slopes = np.dot(B, z)
+    return target_slopes
 
 def corr_act_slope(R, A, slope):
     A = A.transpose
