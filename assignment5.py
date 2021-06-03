@@ -10,13 +10,15 @@ from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 from skimage.feature import peak_local_max
 from skimage import data, img_as_float
-from cameras.ueye_camera import uEyeCamera
-from pyueye import ueye
-from sklearn.cluster import KMeans
+#from cameras.ueye_camera import uEyeCamera
+#from pyueye import ueye
+#from sklearn.cluster import KMeans
 import time as time
 from zernike import RZern
 
-
+import os as os
+path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\SC42065' #use double \ between two directories
+os.chdir(path)
 
 #%%
 def grabframes(nframes, cameraIndex=0):
@@ -89,7 +91,7 @@ def get_slopes(reference,grid_coor, coordinates, radius):
                     #break
             #if grid_coor[x0,y0] == 1:
              #   break
-        difference[i,0] = np.florr(difference[i,0]/n)
+        difference[i,0] = np.floor(difference[i,0]/n)
         difference[i,1] = np.floor(difference[i,1]/n)
             
         difference[i,4] = difference[i,0] - centroid[0]
@@ -280,24 +282,18 @@ if __name__ == "__main__":
 
 
 slopes = np.random.randint(5, size = (len(coordinates),2))
-modes = 10
-B, im_unit = B_matrix(im,coordinates,slopes,modes)
 
-B[np.isnan(B)] =0
-
-
-inverse = wavefront_reconstruction(B,slopes,modes, im_unit)
 
         
         
 #%% Test get_slopes
 plt.figure()
-im = plt.imread('plot1.PNG')
+im = plt.imread('plot_1.PNG')
 im= im[10:220,50:300,0]
 plt.imshow(im)
 
 plt.figure()
-im2 = plt.imread('plot19.PNG')
+im2 = plt.imread('plot2.PNG')
 im2= im2[10:220,50:300,0]
 plt.imshow(im2)
 
@@ -310,9 +306,22 @@ coordinates1,___ = create_ref_grid(im)
 coordinates2,grid2 = create_ref_grid(im2)
 
 
-difference = get_slopes(coordinates,grid2, coordinates2,6)
+
+slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
 
+modes = 10
+B, im_unit = B_matrix(grid2,coordinates1,slopes,modes)
+
+inverse = wavefront_reconstruction(B,slopes,modes, im_unit)
+
+
+
+
+
+
+
+#%%
 
 
 stop = time.time()
