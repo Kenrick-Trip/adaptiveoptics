@@ -142,8 +142,7 @@ def Zernike(mode,im_unit):
     return Phi
 
 
-def B_matrix(im,coordinates,slopes,modes):
-    slopes = slopes[:,4:]
+def B_matrix(im,coordinates,modes):
     #Diameter of sensor in x and y direction
     Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
     Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
@@ -167,9 +166,6 @@ def B_matrix(im,coordinates,slopes,modes):
     cor_unit = coordinates - np.ones((len(coordinates),2))*[midy-R,midx-R]
     cor_unit = cor_unit.astype(int)
     
-    slopes_unit = slopes*(2/len(im_unit))
-    slopes = slopes.astype('int')
-    
     x = np.linspace(-1,1,len(im_unit))
     y = np.linspace(-1,1,len(im_unit))
 
@@ -185,6 +181,8 @@ def B_matrix(im,coordinates,slopes,modes):
     cart.make_cart_grid(xv, yv)
     c = np.zeros(cart.nk)
     B = np.zeros((coordinates.shape[0]*2,modes))
+    dx = 1
+    dy = 1
 
     
 
@@ -195,22 +193,22 @@ def B_matrix(im,coordinates,slopes,modes):
         c[i] = 1.0
         Phi = cart.eval_grid(c, matrix=True)
         Zr = Phi[cor_unit[:,1],cor_unit[:,0]] #Zernike function at reference points
+        
        
-        Zx = Phi[cor_unit[:,1]+slopes[:,1],cor_unit[:,0]] #reference points plus delta y
-        grady = (Zx-Zr)/slopes_unit[:,1]
+        Zx = Phi[cor_unit[:,1]+dx,cor_unit[:,0]] #reference points plus delta y
+        gradx = (Zx-Zr)/(dx*(2/len(im_unit)))
     
-        Zy = Phi[cor_unit[:,1],cor_unit[:,0]+slopes[:,0]] #reference points plus delta x
-        gradx = (Zy-Zr)/slopes_unit[:,0]
+        Zy = Phi[cor_unit[:,1],cor_unit[:,0]+dy] #reference points plus delta x
+        grady = (Zy-Zr)/(dy*(2/len(im_unit)))
         
         B[:,i] = np.concatenate((gradx, grady))
         B[np.isnan(B)] =0
 
-    return B, im_unit, slopes_unit
+    return B, im_unit
 
-def wavefront_reconstruction(B,slopes_unit,modes,im_unit):
+def wavefront_reconstruction(B,target_slopes,modes,im_unit):
     num_points = np.int(slopes_unit.shape[0]*2)
-    slopes = np.reshape(slopes_unit, num_points, order='F')
-    inverse = np.linalg.pinv(B).dot(slopes)
+    inverse = np.linalg.pinv(B).dot(target_slopes)
     zernike = np.zeros(im_unit.shape)
     
 
