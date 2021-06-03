@@ -208,6 +208,7 @@ def B_matrix(im,coordinates,modes):
 
 def wavefront_reconstruction(B,slopes,modes,im_unit):
     slopes = slopes*(2/len(im_unit))
+    num_points = np.int(len(slopes)*2)
     slopes = np.reshape(slopes, num_points, order='F')
     
     coefficients = np.linalg.pinv(B).dot(slopes)
