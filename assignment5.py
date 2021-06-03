@@ -338,7 +338,7 @@ z[1] = 1
 target_slopes = zernike_to_slopes(B, z)
 B, im_unit = B_matrix(im,coordinates1,modes)
 
-coefficients = wavefront_reconstruction(B,slopes,modes, im_unit)
+coefficients = wavefront_reconstruction(B,target_slopes,modes, im_unit)
 
 
 
