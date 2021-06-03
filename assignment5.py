@@ -143,6 +143,7 @@ def Zernike(mode,im_unit):
 
 
 def B_matrix(im,coordinates,modes):
+
     #Diameter of sensor in x and y direction
     Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
     Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
@@ -300,13 +301,7 @@ if __name__ == "__main__":
         plt.show()
         
 
-        
-
-
-#%%
-
-
-slopes = np.random.randint(5, size = (len(coordinates),2))
+      
 
 
         
@@ -334,7 +329,7 @@ coordinates2,grid2 = create_ref_grid(im2)
 
 slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
-
+#%% test zernike_to_slopes
 modes = 10
 z= np.zeros(10)
 modes = len(z)
