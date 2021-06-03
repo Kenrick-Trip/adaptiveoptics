@@ -206,9 +206,11 @@ def B_matrix(im,coordinates,modes):
 
     return B, im_unit
 
-def wavefront_reconstruction(B,target_slopes,modes,im_unit):
-    num_points = np.int(slopes_unit.shape[0]*2)
-    coefficients = np.linalg.pinv(B).dot(target_slopes)
+def wavefront_reconstruction(B,slopes,modes,im_unit):
+    slopes = slopes*(2/len(im_unit))
+    slopes = np.reshape(slopes, num_points, order='F')
+    
+    coefficients = np.linalg.pinv(B).dot(slopes)
     zernike = np.zeros(im_unit.shape)
     
 
