@@ -142,24 +142,28 @@ def Zernike(mode,im_unit):
 
 def B_matrix(im,coordinates,slopes,modes):
     #Diameter of sensor in x and y direction
-    Dx = np.max(coordinates[:,0])-np.min(coordinates[:,0])
-    Dy = np.max(coordinates[:,1])-np.min(coordinates[:,1])
+    Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
+    Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
     D = np.maximum(Dx,Dy)
 
     #center of sensor
-    midy = np.int(np.max(coordinates[:,1])-Dy/2)
-    midx = np.int(np.max(coordinates[:,0])-Dx/2)
+    midy = np.int(np.max(coordinates[:,0])-Dy/2)
+    midx = np.int(np.max(coordinates[:,1])-Dx/2)
+    print(midx)
+    print(midy)
 
+    
     #Maximale uitwijking tov midden 
-    Ry = np.int(np.max(np.abs(coordinates[1]-midy)))
-    Rx = np.int(np.max(np.abs(coordinates[0]-midx)))
-    R = np.maximum(Rx,Ry)+30
+    Ry = np.int(np.max(np.abs(coordinates[0]-midy)))
+    Rx = np.int(np.max(np.abs(coordinates[1]-midx)))
+    R = np.minimum(np.minimum(np.maximum(Rx,Ry)+30, midx-5),midy-5)
+    print(R)
     
     #Cropped image to fit unit circle
-    im_unit = im[midx-R:midx+R,midy-R:midy+R]
+    im_unit = im[midy-R:midy+R,midx-R:midx+R]
   
     #transformed coordinates of centres
-    cor_unit = coordinates - np.ones((len(coordinates),2))*[midx-R,midy-R]
+    cor_unit = coordinates - np.ones((len(coordinates),2))*[midy-R,midx-R]
     cor_unit = cor_unit.astype(int)
     slopes_unit = slopes*(2/len(im_unit))
    
@@ -187,23 +191,21 @@ def B_matrix(im,coordinates,slopes,modes):
         c *= 0.0
         c[i] = 1.0
         Phi = cart.eval_grid(c, matrix=True)
-        Zr = Phi[cor_unit[:,0],cor_unit[:,1]] #Zernike function at reference points
+        Zr = Phi[cor_unit[:,1],cor_unit[:,0]] #Zernike function at reference points
        
-        Zx = Phi[cor_unit[:,0]+slopes[:,0],cor_unit[:,1]] #reference points plus delta y
-        grady = (Zx-Zr)/slopes_unit[:,0]
-        print(grady)
+        Zx = Phi[cor_unit[:,1]+slopes[:,1],cor_unit[:,0]] #reference points plus delta y
+        grady = (Zx-Zr)/slopes_unit[:,1]
     
-        Zy = Phi[cor_unit[:,0],cor_unit[:,1]+slopes[:,1]] #reference points plus delta x
-        gradx = (Zy-Zr)/slopes_unit[:,1]
-        print(gradx)
+        Zy = Phi[cor_unit[:,1],cor_unit[:,0]+slopes[:,0]] #reference points plus delta x
+        gradx = (Zy-Zr)/slopes_unit[:,0]
         
         B[:,i] = np.concatenate((gradx, grady))
         B[np.isnan(B)] =0
 
     return B, im_unit
 
-def wavefront_reconstruction(B,slopes,modes,im_unit):
-    slopes = np.reshape(slopes, 50, order='F')
+def wavefront_reconstruction(B,slopes_unit,modes,im_unit):
+    slopes = np.reshape(slopes_unit, 50, order='F')
     inverse = np.linalg.pinv(B).dot(slopes)
     zernike = np.zeros(im_unit.shape)
     
