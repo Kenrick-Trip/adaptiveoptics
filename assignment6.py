@@ -111,8 +111,7 @@ def get_slopes(reference,grid_coor, coordinates, radius):
 
 def zernike_to_slopes(B, z,im_unit):
     target_slopes = np.dot(B, z)
-    num_points = np.int(B.shape[0]/2)
-    target_slopes = np.reshape(target_slopes, (num_points,2))/(2/len(im_unit))
+    target_slopes = target_slopes/(2/len(im_unit))
     return target_slopes
 
 def corr_act_slope(R, A, slope):
