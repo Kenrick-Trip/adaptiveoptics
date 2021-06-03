@@ -143,32 +143,33 @@ def Zernike(mode,im_unit):
 
 
 def B_matrix(im,coordinates,slopes,modes):
+    slopes = slopes[:,4:]
     #Diameter of sensor in x and y direction
     Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
     Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
     D = np.maximum(Dx,Dy)
 
     #center of sensor
-    midy = np.int(np.max(coordinates[:,0])-Dy/2)
-    midx = np.int(np.max(coordinates[:,1])-Dx/2)
-    print(midx)
-    print(midy)
+    midy = np.int((np.max(coordinates[:,0])+ np.min(coordinates[:,0]))/2)
+    midx = np.int((np.max(coordinates[:,1])+ np.min(coordinates[:,1]))/2)
+
 
     
     #Maximale uitwijking tov midden 
-    Ry = np.int(np.max(np.abs(coordinates[0]-midy)))
-    Rx = np.int(np.max(np.abs(coordinates[1]-midx)))
-    R = np.minimum(np.minimum(np.maximum(Rx,Ry)+30, midx-5),midy-5)
-    print(R)
-    
+    Ry = np.int(np.max(np.abs(coordinates[:,0]-midy)))
+    Rx = np.int(np.max(np.abs(coordinates[:,1]-midx)))
+    R = np.minimum(np.minimum(np.maximum(Rx,Ry)+10, midx-2),midy-2)
+
     #Cropped image to fit unit circle
     im_unit = im[midy-R:midy+R,midx-R:midx+R]
   
     #transformed coordinates of centres
     cor_unit = coordinates - np.ones((len(coordinates),2))*[midy-R,midx-R]
     cor_unit = cor_unit.astype(int)
+    
     slopes_unit = slopes*(2/len(im_unit))
-   
+    slopes = slopes.astype('int')
+    
     x = np.linspace(-1,1,len(im_unit))
     y = np.linspace(-1,1,len(im_unit))
 
@@ -204,10 +205,11 @@ def B_matrix(im,coordinates,slopes,modes):
         B[:,i] = np.concatenate((gradx, grady))
         B[np.isnan(B)] =0
 
-    return B, im_unit
+    return B, im_unit, slopes_unit
 
 def wavefront_reconstruction(B,slopes_unit,modes,im_unit):
-    slopes = np.reshape(slopes_unit, 50, order='F')
+    num_points = np.int(slopes_unit.shape[0]*2)
+    slopes = np.reshape(slopes_unit, num_points, order='F')
     inverse = np.linalg.pinv(B).dot(slopes)
     zernike = np.zeros(im_unit.shape)
     
@@ -217,6 +219,30 @@ def wavefront_reconstruction(B,slopes_unit,modes,im_unit):
 
     plt.imshow(zernike)
     return inverse 
+
+
+        
+        
+#%% Test get_slopes
+plt.figure()
+im = plt.imread('plot_1.png')
+im= im[10:220,50:300,0]
+plt.imshow(im)
+
+plt.figure()
+im2 = plt.imread('plot2.png')
+im2= im2[10:220,50:300,0]
+plt.imshow(im2)
+
+
+#coordinates1 = peak_local_max(im, min_distance= 10, indices = True, threshold_abs = mid)
+start = time.time()
+coordinates1,___ = create_ref_grid(im)
+
+#coordinates2 = peak_local_max(im2, min_distance= 10, indices = True, threshold_abs = mid)
+coordinates2,grid2 = create_ref_grid(im2)
+
+
 
 
 
@@ -311,9 +337,9 @@ slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
 
 modes = 10
-B, im_unit = B_matrix(grid2,coordinates1,slopes,modes)
-
-inverse = wavefront_reconstruction(B,slopes,modes, im_unit)
+slopes = get_slopes(coordinates1,grid2, coordinates2,6)
+B, im_unit, slopes_unit = B_matrix(im,coordinates1,slopes,modes)
+inverse = wavefront_reconstruction(B,slopes_unit,modes, im_unit)
 
 
 
