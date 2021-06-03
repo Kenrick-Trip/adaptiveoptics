@@ -208,15 +208,15 @@ def B_matrix(im,coordinates,modes):
 
 def wavefront_reconstruction(B,target_slopes,modes,im_unit):
     num_points = np.int(slopes_unit.shape[0]*2)
-    inverse = np.linalg.pinv(B).dot(target_slopes)
+    coefficients = np.linalg.pinv(B).dot(target_slopes)
     zernike = np.zeros(im_unit.shape)
     
 
     for i in range(modes):
-        zernike = zernike + inverse[i]*Zernike(i,im_unit)
+        zernike = zernike + coefficients[i]*Zernike(i,im_unit)
 
     plt.imshow(zernike)
-    return inverse 
+    return coefficients 
 
 
         
@@ -335,9 +335,14 @@ slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
 
 modes = 10
-slopes = get_slopes(coordinates1,grid2, coordinates2,6)
-B, im_unit, slopes_unit = B_matrix(im,coordinates1,slopes,modes)
-inverse = wavefront_reconstruction(B,slopes_unit,modes, im_unit)
+z= np.zeros(10)
+modes = len(z)
+z[1] = 1
+
+target_slopes = zernike_to_slopes(B, z)
+B, im_unit = B_matrix(im,coordinates1,modes)
+
+coefficients = wavefront_reconstruction(B,slopes,modes, im_unit)
 
 
 
