@@ -329,16 +329,6 @@ coordinates2,grid2 = create_ref_grid(im2)
 
 slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
-#%% test zernike_to_slopes
-modes = 10
-z= np.zeros(10)
-modes = len(z)
-z[1] = 1
-
-target_slopes = zernike_to_slopes(B, z)
-B, im_unit = B_matrix(im,coordinates1,modes)
-
-coefficients = wavefront_reconstruction(B,target_slopes,modes, im_unit)
 
 
 
