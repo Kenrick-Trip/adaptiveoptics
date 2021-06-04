@@ -63,12 +63,11 @@ def create_ref_grid(ShackHartmann):
 
 def get_slopes(reference,grid_coor, coordinates, radius):
       
-    ref_size = reference.shape[0]
-    crd_size = coordinates.shape[0]
-
-    if ref_size != crd_size:
-        raise Warning('number of reference points differs from number of coordinates')
+    aim = 100
     
+    
+    reference = trim_coordinates(reference,aim)
+    ref_size = reference.shape[0]
 
     difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
     for i in range(ref_size):
