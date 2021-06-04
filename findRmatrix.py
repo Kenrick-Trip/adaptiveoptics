@@ -153,7 +153,7 @@ if __name__ == "__main__":
         im_ref = grabframes(3, 2)[-1] 
         coordinates,___ = create_ref_grid(im_ref)
     
-        for i in range(len(dm)-1):
+        for i in range(len(dm)):
             act = np.zeros(len(dm))
             act[i] = 1
             print(act)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
             # Comparison between image_max and im to find the coordinates of local maxima
             coordinates2,grid2 = create_ref_grid(im2)
             
-            slope = get_slopes(coordinates,grid2, coordinates2, 6)
+            slope = get_slopes(coordinates,grid2, coordinates2, 30)
             n = int(points/2)
             slope = slope[0:n, :]
             

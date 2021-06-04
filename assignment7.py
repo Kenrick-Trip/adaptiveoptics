@@ -55,32 +55,62 @@ def create_ref_grid(ShackHartmann):
     
     return centers, grid_ref
 
-def get_slopes(reference,grid_coor, coordinates, radius):
-      
-    ref_size = reference.shape[0]
-    crd_size = coordinates.shape[0]
+def trim_coordinates(coordinates, aim):
+    """
+    coordinates: coordinates found which are to be trimmed, 2D array
     
+    aim: desired number of coordinates which should be left after trimming
+    """
+    
+    
+    trim_n = coordinates.shape[0] - aim
+    
+    if aim > 0:
+        #trim lower edge
+        for i in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,0]), axis = 0)     
+        
+        #trim upper
+        for j in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,0]), axis = 0)
+        #trim left edge
+        for k in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,1]), axis = 0)
+            
+        #trim right edge    
+        for l in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,1]), axis = 0)
+
+    return coordinates
+
+def get_slopes(reference,grid_coor, coordinates, radius, aim = 100):
+    
+    reference = trim_coordinates(reference,aim)
+    ref_size = reference.shape[0]
+
     difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
     for i in range(ref_size):
         
         centroid = reference[i,:] 
-        
+        n = 0
         for xr in range(-radius,radius):
             for yr in range(-radius,radius):
                 x0 = centroid[0] + xr
                 y0 = centroid[1] + yr
                 
+                
                 if grid_coor[x0,y0] == 1:
-                    difference[i,0] = x0
-                    difference[i,1] = y0
+                    difference[i,0] += x0 
+                    difference[i,1] += y0
+                    n+= 1
                     difference[i,2] = centroid[0]
                     difference[i,3] = centroid[1]
-                    difference[i,4] = x0 - centroid[0]
-                    difference[i,5] = y0 - centroid[1]
-                    break
-            if grid_coor[x0,y0] == 1:
-                break  
+
+        difference[i,0] = np.floor(difference[i,0]/n)
+        difference[i,1] = np.floor(difference[i,1]/n)
             
+        difference[i,4] = difference[i,0] - centroid[0]
+        difference[i,5] = difference[i,1] - centroid[1]
     return difference
 
 
@@ -156,7 +186,7 @@ def create_ref_coordinates():
     im_ref = grabframes(3, 2)[-1] 
     coordinates,___ = create_ref_grid(im_ref)
     
-    return coordinates
+    return coordinates, im_ref
 
 def initial_conditions(init_act):
     dm.setActuators(init_act)
@@ -191,12 +221,12 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
 
 
     #### find reference image: ####
-    ref_coordinates = create_ref_coordinates()
+    ref_coordinates, im_ref = create_ref_coordinates()
     
     #### set all initial conditions: ####
     init_act = x0
     init_coordinates, init_grid = initial_conditions(init_act) 
-    s = get_slopes(ref_coordinates, init_grid, init_coordinates, 6)
+    s = get_slopes(ref_coordinates, init_grid, init_coordinates, 30)
     n = int(points/2)
     s = s[0:n,:]
     s = reshape_slopes(s, points)
@@ -206,15 +236,19 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
     
     act = init_act
     new_act = act_from_slopes(N, s, points)
+    new_act = new_act[0]
     new_act = np.transpose(new_act)
     
     x_hat, Pk = kalman(A, C, y, R, P0, x_hat0)
     
      #### find error: ####
     error = np.zeros((iterations, len(dm)))
-    error[0,:] = tar_act - new_act
+    error[0,:] = np.subtract(tar_act, new_act)
     # print(error[0,:])
-    print(np.sum(np.abs(tar_act - new_act)))
+    print(np.sum(np.abs(np.subtract(tar_act, new_act))))
+    
+    err = np.zeros(iterations-1)
+    #err[0] = np.sum(np.abs(np.subtract(tar_act, new_act)))
     
     #### control loop: ####
     
@@ -226,7 +260,7 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
         
         for i in range(len(dm)):
             minim = least_squares(minimization, act[i], bounds=(-1, 1), args=(N[i,:], x_hat))
-            act[i] = minim.x
+            act[i] = minim.x[0]
             
         #act = act.T
         #print(act)
@@ -235,7 +269,8 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
         
         im2 = grabframes(3, 2)[-1] 
         coordinates, grid = create_ref_grid(im2)
-        s = get_slopes(ref_coordinates, grid, coordinates, 6)
+        s = get_slopes(ref_coordinates, grid, coordinates, 30)
+        # print(s[:,5])
         n = int(points/2)
         s = s[0:n,:]
         s = reshape_slopes(s, points)
@@ -243,22 +278,24 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
         y = s
         
         new_act = act_from_slopes(N, s, points)
+        new_act = new_act[0]
         new_act = np.transpose(new_act)
-        
-        # print(y)
+              
+        #print(y)
         
         x_hat, Pk = kalman(A, C, y, R, Pk, x_hat)
         
         error[i+1,:] = tar_act - new_act
+        err[i] = np.sum(np.abs(np.subtract(tar_act, np.transpose(new_act))))
         
         # print(error[i+1,:])
-        print(np.sum(np.abs(tar_s - s)))
+        print(np.sum(np.abs(np.subtract(tar_act, np.transpose(new_act)))))
         #print(minim.cost)
         
         #if minim.cost < 1e-2:
         #  break
     
-    return tar_s, tar_act, act, y, error
+    return tar_s, tar_act, act, y, error, im2, im_ref, err
     
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
@@ -273,14 +310,30 @@ if __name__ == "__main__":
                 # settings
         N = np.load('influence_matrix.npy')
         points = 100
-        iterations = 50
+        iterations = 30
         
         # tunable constants
-        R = 0.5
+        R = 0.8
         A = np.ones((points, points))
-        C = np.ones((points, points))
+        C = np.ones((points, points))*0.5
         
         # running the code
-        tar_s, tar_act, act, y, error = converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0)
+        tar_s, tar_act, act, y, error, im2, im_ref, err = converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0)
+        
+        #err = np.zeros(iterations)
+        
+        # for i in range(iterations):
+        #    err[i] = np.sum(np.abs(error[i,:]))
+            
+        it = np.arange(iterations-1)
+        
+        # plt.figure()
+        # plt.plot(it, err)
+        
+        plt.figure()
+        plt.imshow(im_ref)
+        
+        plt.figure()
+        plt.imshow(im2)
         
         

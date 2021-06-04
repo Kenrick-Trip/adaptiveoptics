@@ -75,37 +75,62 @@ def add_noise(slopes):
         slopes[i,2] = slopes[i,2] + (0.5-np.rand.random(1,1))*2*dist
     return slopes
 
-def get_slopes(reference,grid_coor, coordinates, radius):
-      
-    ref_size = reference.shape[0]
-    crd_size = coordinates.shape[0]
-
-    #if ref_size != crd_size:
-    #    raise Warning('number of reference points differs from number of coordinates')
+def trim_coordinates(coordinates, aim):
+    """
+    coordinates: coordinates found which are to be trimmed, 2D array
     
+    aim: desired number of coordinates which should be left after trimming
+    """
+    
+    
+    trim_n = coordinates.shape[0] - aim
+    
+    if aim > 0:
+        #trim lower edge
+        for i in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,0]), axis = 0)     
+        
+        #trim upper
+        for j in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,0]), axis = 0)
+        #trim left edge
+        for k in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,1]), axis = 0)
+            
+        #trim right edge    
+        for l in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,1]), axis = 0)
+
+    return coordinates
+
+def get_slopes(reference,grid_coor, coordinates, radius, aim = 100):
+    
+    reference = trim_coordinates(reference,aim)
+    ref_size = reference.shape[0]
 
     difference = np.zeros((ref_size,6))    # [x0, y0, xref, yref delta_x, delta_y]
     for i in range(ref_size):
         
         centroid = reference[i,:] 
-        
+        n = 0
         for xr in range(-radius,radius):
             for yr in range(-radius,radius):
                 x0 = centroid[0] + xr
                 y0 = centroid[1] + yr
                 
+                
                 if grid_coor[x0,y0] == 1:
-                    difference[i,0] = x0
-                    difference[i,1] = y0
+                    difference[i,0] += x0 
+                    difference[i,1] += y0
+                    n+= 1
                     difference[i,2] = centroid[0]
                     difference[i,3] = centroid[1]
-                    difference[i,4] = x0 - centroid[0]
-                    difference[i,5] = y0 - centroid[1]
-                    break
-            if grid_coor[x0,y0] == 1:
-                break
+
+        difference[i,0] = np.floor(difference[i,0]/n)
+        difference[i,1] = np.floor(difference[i,1]/n)
             
-            
+        difference[i,4] = difference[i,0] - centroid[0]
+        difference[i,5] = difference[i,1] - centroid[1]
     return difference
 
 
@@ -213,7 +238,7 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
     # find some allowed error value
     err = 1e-3
     # constant gain
-    Kp = 0.8
+    Kp = 0.7
     
     #### find reference image: ####
     ref_coordinates = create_ref_coordinates()
@@ -221,7 +246,7 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
     #### set all initial conditions: ####
     init_act = np.random.uniform(-1,1,size=len(dm))  # np.zeros(len(dm)) #np.random.uniform(-1,1,size=len(dm)) 
     init_coordinates, init_grid = initial_conditions(init_act) 
-    s = get_slopes(ref_coordinates, init_grid, init_coordinates, 6)
+    s = get_slopes(ref_coordinates, init_grid, init_coordinates, 30)
     n = int(points/2)
     s = s[0:n,:]
     s = reshape_slopes(s, points)
@@ -246,7 +271,7 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
     
     # while np.amax(error) > err:
     for i in range(iterations - 1):
-        act = np.subtract(act, np.subtract(tar_act, new_act)).dot(Kp)
+        act = np.subtract(tar_act, new_act).dot(Kp) #np.subtract(act, np.subtract(tar_act, new_act)).dot(Kp)
         act = np.clip(act, -1, 1)
         print(act)
 
@@ -254,7 +279,7 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
         
         im2 = grabframes(3, 2)[-1] 
         coordinates, grid = create_ref_grid(im2)
-        s = get_slopes(ref_coordinates, grid, coordinates, 6)
+        s = get_slopes(ref_coordinates, grid, coordinates, 30)
         n = int(points/2)
         s = s[0:n,:]
         s = reshape_slopes(s, points)
@@ -283,7 +308,7 @@ if __name__ == "__main__":
         A = np.load('influence_matrix.npy')
         target_zernike = 60
         points = 100
-        iterations = 80
+        iterations = 30
         tar_act, act, new_act, error, s = converge_to_zernike(dm, target_zernike, points, A, iterations)
         
         err = np.zeros(iterations)

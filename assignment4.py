@@ -188,5 +188,5 @@ if __name__ == "__main__":
         for i in range(len(dm)):
             C[i,:] = (np.random.randint(21, size=19)-10*np.ones(19))/10
         
-        Aopt = minimize(secondmoment, B, method='nelder-mead', 
+        Aopt = minimize(standardDev, B, method='nelder-mead', 
                         options={'initial_simplex': C, 'xatol': 1e-6, 'disp': True, 'maxfev': maxiter, 'fatol': 1, 'adaptive': False})
