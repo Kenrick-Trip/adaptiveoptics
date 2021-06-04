@@ -142,6 +142,7 @@ def Zernike(mode,im_unit):
 
 
 def B_matrix(im,coordinates,modes):
+
     #Diameter of sensor in x and y direction
     Dx = np.max(coordinates[:,1])-np.min(coordinates[:,1])
     Dy = np.max(coordinates[:,0])-np.min(coordinates[:,0])
@@ -205,17 +206,18 @@ def B_matrix(im,coordinates,modes):
 
     return B, im_unit
 
-def wavefront_reconstruction(B,target_slopes,modes,im_unit):
-    num_points = np.int(slopes_unit.shape[0]*2)
-    inverse = np.linalg.pinv(B).dot(target_slopes)
+def wavefront_reconstruction(B,slopes,modes,im_unit):
+    slopes = slopes*(2/len(im_unit))
+    
+    coefficients = np.linalg.pinv(B).dot(slopes)
     zernike = np.zeros(im_unit.shape)
     
 
     for i in range(modes):
-        zernike = zernike + inverse[i]*Zernike(i,im_unit)
+        zernike = zernike + coefficients[i]*Zernike(i,im_unit)
 
     plt.imshow(zernike)
-    return inverse 
+    return coefficients 
 
 def trim_coordinates(coordinates, aim):
     """
@@ -328,13 +330,7 @@ if __name__ == "__main__":
         plt.show()
         
 
-        
-
-
-#%%
-
-
-slopes = np.random.randint(5, size = (len(coordinates),2))
+      
 
 
         
@@ -362,11 +358,6 @@ coordinates2,grid2 = create_ref_grid(im2)
 
 slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
-
-modes = 10
-slopes = get_slopes(coordinates1,grid2, coordinates2,6)
-B, im_unit, slopes_unit = B_matrix(im,coordinates1,slopes,modes)
-inverse = wavefront_reconstruction(B,slopes_unit,modes, im_unit)
 
 
 

@@ -137,6 +137,11 @@ if __name__ == "__main__":
         R = np.zeros((points, len(dm)))
         n = np.zeros(len(dm))
         
+        #slope = np.array([[0,0,0,0,1,2],[0,0,0,0,3,4],[0,0,0,0,5,6]])
+        #points = 6
+        #print(reshape_slopes(slope, points))
+        
+        #exit
     
         #### find reference image: ####
     
@@ -149,7 +154,9 @@ if __name__ == "__main__":
         coordinates,___ = create_ref_grid(im_ref)
     
         for i in range(len(dm)-1):
+            act = np.zeros(len(dm))
             act[i] = 1
+            print(act)
             dm.setActuators(act)    
             im2 = grabframes(3, 2)[-1] 
         

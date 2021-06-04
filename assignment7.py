@@ -169,15 +169,19 @@ def initial_conditions(init_act):
 
 def kalman(A, C, y, R, Pprev, x_hat_prev):
     Kk = Pprev*(C.T)*(C*Pprev*(C.T)+R)**(-1)
-    obs_gain = Kk*C
+    obs_gain = Kk.dot(C)
     dim = obs_gain.shape
     Lk = np.ones((dim)) - obs_gain
-    x_hat = Kk*y + Lk*x_hat_prev
-    Pk = Pprev - Kk*C*Pprev
+    x_hat = Kk.dot(y) + Lk.dot(x_hat_prev)
+    Pk = Pprev - (Kk.dot(C)).dot(Pprev)
     return x_hat, Pk
 
 def minimization(x_hat, N, act):
-    return x_hat - N*act
+    #print(N.shape)
+    #print(act.shape)
+    f = (N.T).dot(act)
+    
+    return x_hat - f
 
 def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
     # converge to reference
@@ -197,26 +201,35 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
     s = s[0:n,:]
     s = reshape_slopes(s, points)
     
-
+    y = s
+    # print(y.shape)
+    
     act = init_act
     new_act = act_from_slopes(N, s, points)
-    y = np.transpose(new_act)
+    new_act = np.transpose(new_act)
     
     x_hat, Pk = kalman(A, C, y, R, P0, x_hat0)
     
      #### find error: ####
     error = np.zeros((iterations, len(dm)))
-    error[0,:] = tar_act - y
+    error[0,:] = tar_act - new_act
     # print(error[0,:])
-    print(np.sum(np.abs(tar_act - y)))
+    print(np.sum(np.abs(tar_act - new_act)))
     
     #### control loop: ####
     
     # while np.amax(error) > err:
     for i in range(iterations - 1):
-        minim = least_squares(minimization, act, bounds=(-1, 1), args=(x_hat, N))
-        act = minim.act
-        print(act)
+        #act = act.T
+        #print(act.shape)
+        #print(N.shape)
+        
+        for i in range(len(dm)):
+            minim = least_squares(minimization, act[i], bounds=(-1, 1), args=(N[i,:], x_hat))
+            act[i] = minim.x
+            
+        #act = act.T
+        #print(act)
 
         dm.setActuators(act)
         
@@ -227,23 +240,25 @@ def converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0):
         s = s[0:n,:]
         s = reshape_slopes(s, points)
         
+        y = s
+        
         new_act = act_from_slopes(N, s, points)
-        y = np.transpose(new_act)
+        new_act = np.transpose(new_act)
         
         # print(y)
         
         x_hat, Pk = kalman(A, C, y, R, Pk, x_hat)
         
-        error[i+1,:] = tar_act - y
+        error[i+1,:] = tar_act - new_act
         
         # print(error[i+1,:])
-        print(np.sum(np.abs(tar_act - y)))
-        print(minim.cost)
+        print(np.sum(np.abs(tar_s - s)))
+        #print(minim.cost)
         
-        if minim.cost < 1e-2:
-          break
+        #if minim.cost < 1e-2:
+        #  break
     
-    return tar_act, act, y, error
+    return tar_s, tar_act, act, y, error
     
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
@@ -252,20 +267,20 @@ if __name__ == "__main__":
         P0 = 1
         x0 = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
                 -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
-                0.4570, -0.7946, 0.3021, 0.0327, 0.3566]  
-        x_hat0 = x0
+                0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
+        x_hat0 = np.zeros((100,1))
+        
+                # settings
+        N = np.load('influence_matrix.npy')
+        points = 100
+        iterations = 50
         
         # tunable constants
         R = 0.5
-        A = np.ones((len(dm),len(dm)))
-        C = np.ones((len(dm),len(dm)))
-        
-        # settings
-        N = np.load('influence_matrix100.npy')
-        points = 100
-        iterations = 80
+        A = np.ones((points, points))
+        C = np.ones((points, points))
         
         # running the code
-        tar_act, act, y, error = converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0)
+        tar_s, tar_act, act, y, error = converge_to_ref(dm, points, iterations, N, A, C, R, P0, x0, x_hat0)
         
         
