@@ -61,9 +61,9 @@ def create_ref_grid(ShackHartmann):
     return centers, grid_ref
 
 
-def get_slopes(reference,grid_coor, coordinates, radius):
+def get_slopes(reference,grid_coor, coordinates, radius, aim = 100):
       
-    aim = 100
+
     
     
     reference = trim_coordinates(reference,aim)
@@ -87,9 +87,6 @@ def get_slopes(reference,grid_coor, coordinates, radius):
                     difference[i,2] = centroid[0]
                     difference[i,3] = centroid[1]
 
-                    #break
-            #if grid_coor[x0,y0] == 1:
-             #   break
         difference[i,0] = np.floor(difference[i,0]/n)
         difference[i,1] = np.floor(difference[i,1]/n)
             
@@ -342,36 +339,26 @@ im= im[10:220,50:300,0]
 plt.imshow(im)
 
 plt.figure()
-im2 = plt.imread('plot2.PNG')
+im2 = plt.imread('plot15.PNG')
 im2= im2[10:220,50:300,0]
 plt.imshow(im2)
 
 
 #coordinates1 = peak_local_max(im, min_distance= 10, indices = True, threshold_abs = mid)
 start = time.time()
-coordinates1,___ = create_ref_grid(im)
+coordinates1,grid_ref1= create_ref_grid(im)
 
 #coordinates2 = peak_local_max(im2, min_distance= 10, indices = True, threshold_abs = mid)
-coordinates2,grid2 = create_ref_grid(im2)
+coordinates2,grid_ref2 = create_ref_grid(im2)
 
 
 
 slopes = get_slopes(coordinates1,grid2, coordinates2,6)
 
-
-
-
-
-
-
-
-#%%
-
-
 stop = time.time()
 print(stop - start)
 plt.figure()
-plt.plot(difference[:,0],difference[:,1], 'r.')
+plt.plot(slopes[:,0],slopes[:,1], 'r.')
 plt.xlim(0,250)
 plt.ylim(0,220)
 
@@ -379,10 +366,21 @@ plt.show()
 
 
 plt.figure()
-plt.plot(coordinates1[:,0],coordinates1[:,1], 'r.')
-plt.plot(difference[:,0],difference[:,1], 'b.')
+plt.plot(slopes[:,0],slopes[:,1], 'r.')
+plt.plot(slopes[:,2],slopes[:,3], 'b.')
 plt.xlim(0,250)
 plt.ylim(0,220)
 
 plt.show()     
-        
+     
+#%%
+   
+slopes[:,2] = slopes[:,2] + slopes[:,4]
+slopes[:,3] = slopes[:,3] + slopes[:,5]
+
+
+
+diff = np.zeros((slopes.shape[0],2))
+diff[:,0] = slopes[:,0] - slopes[:,2]
+diff[:,1] = slopes[:,1] - slopes[:,3]
+
