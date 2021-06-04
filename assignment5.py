@@ -17,7 +17,7 @@ import time as time
 from zernike import RZern
 
 import os as os
-path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\SC42065' #use double \ between two directories
+path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\SC42065\\assignment5' #use double \ between two directories
 os.chdir(path)
 
 #%%
@@ -52,7 +52,7 @@ def create_ref_grid(ShackHartmann):
     SH_round = np.around(ShackHartmann, decimals = 3)
     threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
      #Find the local coordinates on the total matrix 
-    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold)
+    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold )#,num_peaks = 125)
     centers = distance(coordinates,10)
     
     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
@@ -218,12 +218,37 @@ def wavefront_reconstruction(B,target_slopes,modes,im_unit):
     plt.imshow(zernike)
     return inverse 
 
+def trim_coordinates(coordinates, aim):
+    """
+    coordinates: coordinates found which are to be trimmed, 2D array
+    
+    aim: desired number of coordinates which should be left after trimming
+    """
+    
+    
+    trim_n = coordinates.shape[0] - aim
+    
+    if aim > 0:
+        #trim lower edge
+        for i in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,0]), axis = 0)     
+        
+        #trim upper
+        for j in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,0]), axis = 0)
+        #trim left edge
+        for k in range(np.int(np.floor(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmin(coordinates[:,1]), axis = 0)
+            
+        #trim right edge    
+        for l in range(np.int(np.ceil(trim_n/4))):
+            coordinates =  np.delete(coordinates,np.argmax(coordinates[:,1]), axis = 0)
 
-        
-        
+    return coordinates
+
 #%% Test get_slopes
 plt.figure()
-im = plt.imread('plot_1.png')
+im = plt.imread('plot1.png')
 im= im[10:220,50:300,0]
 plt.imshow(im)
 
@@ -236,12 +261,17 @@ plt.imshow(im2)
 #coordinates1 = peak_local_max(im, min_distance= 10, indices = True, threshold_abs = mid)
 start = time.time()
 coordinates1,___ = create_ref_grid(im)
-
+print(coordinates1.shape)
+coordinates1 = trim_coordinates(coordinates1,92)
+print(coordinates1.shape)
 #coordinates2 = peak_local_max(im2, min_distance= 10, indices = True, threshold_abs = mid)
 coordinates2,grid2 = create_ref_grid(im2)
 
 
 
+plt.figure()
+plt.scatter(coordinates2[:,1],coordinates2[:,0])
+plt.scatter(coordinates1[:,1],coordinates1[:,0])
 
 
     
