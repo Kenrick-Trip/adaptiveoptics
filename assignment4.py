@@ -35,20 +35,15 @@ def grabframes(nframes, cameraIndex=0):
     
         imgs = np.zeros((nframes,h,w),dtype=np.uint8)
         acquired=0
-        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
-        # So best to discard some frames and then use the last one
+
         while acquired<nframes:
             frame = cam.grab_frame()
             if frame is not None:
                 imgs[acquired]=frame
                 acquired+=1
-            
-    
         cam.stop_video()
     
     return imgs
- 
-# TODO: plots - Actuators (Array plot) + Images (before, after) - in function format
 
 def zoomImage(img, w, h):
     [wo, ho] = np.unravel_index(img.argmax(), img.shape)
@@ -93,6 +88,7 @@ def secondmoment(x):
     
     return res 
 
+# used for testing only
 def secondmoment1(x):
     print(x)
         
@@ -123,7 +119,7 @@ def secondmoment1(x):
     
     return M
     
-    
+# comparison with standard deviation
 def standardDev(x):
     print(x)
         
@@ -162,31 +158,10 @@ def standardDev(x):
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm:           
-        # send signal to DM
-        A = np.zeros(len(dm))
-        
-        # inner circle
-        A[0] = 0
-        A[1] = 1
-        A[2] = -0.5
-        A[3] = 0
-        A[4] = 1           
-        
-        # outer circle
-        A[5] = 0.5
-        A[6] = 0.5
-        A[7] = 0.5
-        A[9] = 0.5
-        A[10] = 0.5
-        
-        # tip/tilt
-        A[17] = 1
-        A[18] = -0.667
-        
         B = np.zeros(len(dm))
         C = np.zeros((len(dm)+1, len(dm)))
         for i in range(len(dm)):
             C[i,:] = (np.random.randint(21, size=19)-10*np.ones(19))/10
         
-        Aopt = minimize(standardDev, B, method='nelder-mead', 
+        Aopt = minimize(secondmoment, B, method='nelder-mead', 
                         options={'initial_simplex': C, 'xatol': 1e-6, 'disp': True, 'maxfev': maxiter, 'fatol': 1, 'adaptive': False})

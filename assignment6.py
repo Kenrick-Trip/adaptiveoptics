@@ -29,15 +29,11 @@ def grabframes(nframes, cameraIndex=0):
     
         imgs = np.zeros((nframes,h,w),dtype=np.uint8)
         acquired=0
-        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
-        # So best to discard some frames and then use the last one
         while acquired<nframes:
             frame = cam.grab_frame()
             if frame is not None:
                 imgs[acquired]=frame
                 acquired+=1
-            
-    
         cam.stop_video()
     
     return imgs
@@ -158,12 +154,7 @@ def reshape_slopes(slope, points):
     return S
 
 def act_from_slopes(A, slope, points):
-    # n = int(points/2)
-    # slope = slope[0:n, :]
-    # S = reshape_slopes(slope, points)
-    
     res = A.dot(slope)
-    # print(res.shape)
     return res.T
 
 def distance(pos, threshold):
@@ -224,8 +215,6 @@ def initial_conditions(init_act):
     return coordinates, grid
 
 def converge_to_zernike(dm, target_zernike, points, A, iterations):
-    #### TODO: find target slopes from Zernike ####
-    # B = np.zeros(target_zernike) # (placeholder)
     # target slopes
     #tar_s = zernike_to_slopes(B, target_zernike)
     
@@ -254,17 +243,11 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
 
     act = init_act
     new_act = act_from_slopes(A, s, points)
-    #new_act = np.transpose(new_act)
     new_act = new_act[0]
     print(new_act)
     
-    #https://www.osapublishing.org/oe/fulltext.cfm?uri=oe-26-2-1655&id=380836
-    
-    #iterations = 100
-    
     error = np.zeros((iterations, len(dm)))
     error[0,:] = np.subtract(tar_act, new_act)
-    # print(error[0,:])
     print(np.sum(np.abs(np.subtract(tar_act, new_act))))
     
     #### control loop: ####
@@ -285,17 +268,11 @@ def converge_to_zernike(dm, target_zernike, points, A, iterations):
         s = reshape_slopes(s, points)
         
         new_act = act_from_slopes(A, s, points)
-        #new_act = np.transpose(new_act)
         new_act = new_act[0]
-        
         print(new_act)
         
         error[i+1,:] = np.subtract(tar_act, new_act)
-        # print(error[i+1,:])
         print(np.sum(np.abs(np.subtract(tar_act, new_act))))
-        
-        # if np.all((new_act == 0)):
-        #    break
     
     return tar_act, act, new_act, error, s
 

@@ -28,15 +28,12 @@ def grabframes(nframes, cameraIndex=0):
     
         imgs = np.zeros((nframes,h,w),dtype=np.uint8)
         acquired=0
-        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
-        # So best to discard some frames and then use the last one
+
         while acquired<nframes:
             frame = cam.grab_frame()
             if frame is not None:
                 imgs[acquired]=frame
                 acquired+=1
-            
-    
         cam.stop_video()
     
     return imgs
@@ -136,12 +133,6 @@ if __name__ == "__main__":
         # test with real image:
         R = np.zeros((points, len(dm)))
         n = np.zeros(len(dm))
-        
-        #slope = np.array([[0,0,0,0,1,2],[0,0,0,0,3,4],[0,0,0,0,5,6]])
-        #points = 6
-        #print(reshape_slopes(slope, points))
-        
-        #exit
     
         #### find reference image: ####
     
@@ -170,7 +161,8 @@ if __name__ == "__main__":
             S = reshape_slopes(slope, points)
             R[0:2*slope.shape[0],i] = S[:,0]
         
-        A = np.linalg.pinv(R)
+        # return influence matrix N
+        N = np.linalg.pinv(R)
         
         
         

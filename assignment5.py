@@ -10,15 +10,15 @@ from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 from skimage.feature import peak_local_max
 from skimage import data, img_as_float
-#from cameras.ueye_camera import uEyeCamera
-#from pyueye import ueye
-#from sklearn.cluster import KMeans
+from cameras.ueye_camera import uEyeCamera
+from pyueye import ueye
+from sklearn.cluster import KMeans
 import time as time
 from zernike import RZern
 
-import os as os
-path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\SC42065\\assignment5' #use double \ between two directories
-os.chdir(path)
+# import os as os
+# path = 'C:\\Users\\loekv\\OneDrive\\Documenten\\Tu Delft\\4de jaar\\Control for High Resolution Imaging\\SC42065\\assignment5' #use double \ between two directories
+# os.chdir(path)
 
 #%%
 def grabframes(nframes, cameraIndex=0):
@@ -34,15 +34,12 @@ def grabframes(nframes, cameraIndex=0):
     
         imgs = np.zeros((nframes,h,w),dtype=np.uint8)
         acquired=0
-        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
-        # So best to discard some frames and then use the last one
+
         while acquired<nframes:
             frame = cam.grab_frame()
             if frame is not None:
                 imgs[acquired]=frame
                 acquired+=1
-            
-    
         cam.stop_video()
     
     return imgs
@@ -52,7 +49,8 @@ def create_ref_grid(ShackHartmann):
     SH_round = np.around(ShackHartmann, decimals = 3)
     threshold = np.mean(SH_round)*1.5 #determine threshold in less arbitrary way
      #Find the local coordinates on the total matrix 
-    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, threshold_abs = threshold )#,num_peaks = 125)
+    coordinates = peak_local_max(ShackHartmann, min_distance= 10, indices = True, 
+                                 threshold_abs = threshold)
     centers = distance(coordinates,10)
     
     grid_ref = np.zeros((ShackHartmann.shape[0],ShackHartmann.shape[1]))
@@ -62,10 +60,6 @@ def create_ref_grid(ShackHartmann):
 
 
 def get_slopes(reference,grid_coor, coordinates, radius, aim = 100):
-      
-
-    
-    
     reference = trim_coordinates(reference,aim)
     ref_size = reference.shape[0]
 
@@ -149,8 +143,6 @@ def B_matrix(im,coordinates,modes):
     midy = np.int((np.max(coordinates[:,0])+ np.min(coordinates[:,0]))/2)
     midx = np.int((np.max(coordinates[:,1])+ np.min(coordinates[:,1]))/2)
 
-
-    
     #Maximale uitwijking tov midden 
     Ry = np.int(np.max(np.abs(coordinates[:,0]-midy)))
     Rx = np.int(np.max(np.abs(coordinates[:,1]-midx)))
@@ -166,7 +158,6 @@ def B_matrix(im,coordinates,modes):
     x = np.linspace(-1,1,len(im_unit))
     y = np.linspace(-1,1,len(im_unit))
 
-
     xv, yv = np.meshgrid(x,y)
     plt.figure()
     plt.pcolor(xv,yv,im_unit)
@@ -181,9 +172,6 @@ def B_matrix(im,coordinates,modes):
     dx = 1
     dy = 1
 
-    
-
-    
     for i in range(1, modes): #set desired zernike range
         
         c *= 0.0
@@ -244,7 +232,8 @@ def trim_coordinates(coordinates, aim):
 
     return coordinates
 
-#%% Test get_slopes
+#%% All code listed below was used for testing and plotting: 
+    
 plt.figure()
 im = plt.imread('plot1.png')
 im= im[10:220,50:300,0]
@@ -265,8 +254,6 @@ print(coordinates1.shape)
 #coordinates2 = peak_local_max(im2, min_distance= 10, indices = True, threshold_abs = mid)
 coordinates2,grid2 = create_ref_grid(im2)
 
-
-
 plt.figure()
 plt.scatter(coordinates2[:,1],coordinates2[:,0])
 plt.scatter(coordinates1[:,1],coordinates1[:,0])
@@ -285,7 +272,9 @@ if __name__ == "__main__":
         
         # test with real image:
         A =  np.random.uniform(-1,1,size=len(dm))
-        B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
+        B = [0.0867, 0.0301, -0.6900, 0.0404, 0.5881, -0.1695, 0.1227, 
+             -0.3075, -0.2758, -0.3140, 0.4008, 0.6092, 0.0031, -0.5832, 
+             0.4570, -0.7946, 0.3021, 0.0327, 0.3566]
         dm.setActuators(B)    
         im = grabframes(3, 2)[-1] 
 
@@ -299,11 +288,9 @@ if __name__ == "__main__":
         mid = np.mean(im2)*1.5
         
         # Comparison between image_max and im to find the coordinates of local maxima
-        coordinates = peak_local_max(im, min_distance = 45, indices = True, threshold_abs = 3.5, num_peaks_per_label = 1)
+        coordinates = peak_local_max(im, min_distance = 45, indices = True, 
+                                     threshold_abs = 3.5, num_peaks_per_label = 1)
         coordinates = distance(coordinates, 20)
-        
-        
-        
         
         # display results
         fig, axes = plt.subplots(1, 3, figsize=(8, 3), sharex=True, sharey=True )
@@ -325,12 +312,6 @@ if __name__ == "__main__":
         fig.tight_layout()
         
         plt.show()
-        
-
-      
-
-
-        
         
 #%% Test get_slopes
 plt.figure()
@@ -373,12 +354,10 @@ plt.ylim(0,220)
 
 plt.show()     
      
-#%%
+#%% test code for slopes
    
 slopes[:,2] = slopes[:,2] + slopes[:,4]
 slopes[:,3] = slopes[:,3] + slopes[:,5]
-
-
 
 diff = np.zeros((slopes.shape[0],2))
 diff[:,0] = slopes[:,0] - slopes[:,2]

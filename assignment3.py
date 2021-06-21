@@ -31,15 +31,11 @@ def grabframes(nframes, cameraIndex=0):
     
         imgs = np.zeros((nframes,h,w),dtype=np.uint8)
         acquired=0
-        # For some reason, the IDS cameras seem to be overexposed on the first frames (ignoring exposure time?). 
-        # So best to discard some frames and then use the last one
         while acquired<nframes:
             frame = cam.grab_frame()
             if frame is not None:
                 imgs[acquired]=frame
                 acquired+=1
-            
-    
         cam.stop_video()
     
     return imgs
@@ -113,46 +109,31 @@ def edgeSharpness(f):
             S2 = S2 + f[i,j]
     
     return S1/S2
-
-# TODO: insert metrics 
-# TODO: plots - Actuators (Array plot) + Images (before, after) - in function format
-
-# main loop:
     
 if __name__ == "__main__":
     from dm.okotech.dm import OkoDM
     with OkoDM(dmtype=1) as dm:   
         # define constants
-        n = 4000 # iterations per method
+        n = 3000 # iterations per method
         w = 20
         h = 20
         progress = 0
         
         val = np.zeros(n) # store total cost value
         act = np.zeros((n,19)) # len(dm))) # store actuator values
-        offset = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0] # find static abberation using trail and error
         
+        # grid search:
         for i in range(n):
             f = np.zeros((n,h,w))
-            #act[i][:] = np.random.uniform(-1,1,size=19) + offset # len(dm)
-            #x = (np.random.randint(5, size=5)-2*np.ones(5))/2
-            #x = (np.random.randint(7, size=5)-3*np.ones(5))/3 tip/tilt
-            x = (np.random.randint(2, size=12))/2
+            x = (np.random.randint(5, size=5)-2*np.ones(5))/2
+            # x = (np.random.randint(7, size=5)-3*np.ones(5))/3 tip/tilt
+            # x = (np.random.randint(2, size=12))/2
             A = np.zeros(len(dm))
             
-            A[0] = 0
-            A[1] = 1
-            A[2] = -0.5
-            A[3] = 0
-            A[4] = 1
-            A[17] = 1
-            A[18] = -0.667
-            
-            for k in range(12):
-                A[k+5] = x[k]
+            for k in range(5):
+                A[k] = x[k]
             
             act[i][:] = A
-            print(A)
             
             #global progress
             progress = progress + 1
@@ -177,6 +158,52 @@ if __name__ == "__main__":
         
         opt = np.argmin(val)
         opt_act = act[opt][:]
+        
+        # random walk:
+        n = 1000 # iterations per method
+        stepsize = 0.01
+        val = np.zeros(n) # store total cost value
+        val[0] = 1e7 # just some large value
+        
+        A = np.zeros(len(dm))
+            
+        # take values from opt_act
+        A[0] = 0
+        A[1] = 1
+        A[2] = -0.5
+        A[3] = 0
+        A[4] = 1
+        
+        progress = 0
+            
+        for i in range(n):
+            f = np.zeros((n,h,w))
+            
+            B = np.add(A,(np.random.uniform(-1,1,size=len(dm)))*stepsize)
+            B = np.clip(B, -1, 1)
+            
+            #global progress
+            progress = progress + 1
+            percentage = round((progress/n)*100,2)
+            print('progress = {}%'.format(percentage))
+            
+            # send signal to DM
+            dm.setActuators(B)
+            img=grabframes(5, Camera_Index)
+            
+            f[i][:][:] = zoomImage(img[-1],h,w) # img[-1]
+            
+            # metrics -> Iij is PSF(i,j), here doneted as f[i][j]
+            m1 = sharpness(f[i][:][:]) # metric 1 - sharpness
+            m2 = standardDev(f[i][:][:]) # metric 2 - standard deviation
+            m3 = secondMoment(f[i][:][:]) # metric 3 - second moment
+            m4 = edgeSharpness(f[i][:][:]) # metric 4 - edge sharpness
+            
+            val[i+1] = costFunc(m1, m2, m3, m4)
+            
+            if val[i+1] < val[i]:
+                A = B
+        
             
                 
                 
